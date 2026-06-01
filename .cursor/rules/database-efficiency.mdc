@@ -1,0 +1,35 @@
+---
+description: Database and query performance for Terrana ERP
+globs: supabase/**/*.sql,src/lib/**/*.ts,src/app/**/page.tsx,src/app/**/route.ts
+alwaysApply: false
+---
+
+# Database efficiency (Terrana ERP)
+
+PostgreSQL/Supabase must stay fast as operational data grows.
+
+## Schema & types
+
+- Money (₦) and weights (kg): use **`NUMERIC`**, not `float`/`double precision`.
+- Status, dates, foreign keys: add **indexes** on columns used in `WHERE`, `ORDER BY`, and joins.
+- Prefer composite indexes for common filters, e.g. `(supplier_id, payment_status)`.
+
+## Queries
+
+- Every list endpoint/table view: **paginate** (default 25 rows).
+- Use `count` with filters sparingly; prefer approximate counts or cached summaries on dashboards.
+- Traceability chains (supplier → batch → shipment): load **full chain on detail pages only**, not list rows.
+
+## RLS & security
+
+- Keep policies simple — complex per-row logic slows every query.
+- Use `security definer` functions only when necessary; index columns referenced in policies.
+
+## Migrations
+
+- Add indexes in the same migration as new tables when the access pattern is known.
+- Never delete business records — use status changes; index `status` on high-volume tables.
+
+## Dashboard (Phase 9)
+
+- Pre-aggregate KPIs via **views or SQL functions**, not `COUNT(*)` across full tables on every page load.
