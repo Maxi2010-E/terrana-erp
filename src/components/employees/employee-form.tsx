@@ -53,7 +53,12 @@ export function EmployeeForm({
           Employee ID:{" "}
           <span className="font-medium">{employee.employee_code}</span>
         </div>
-      ) : null}
+      ) : (
+        <div className="rounded-lg border border-dashed bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+          Employee ID (e.g. EMP-2026-00001) is assigned automatically when you
+          save.
+        </div>
+      )}
 
       <section className="space-y-4">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
@@ -219,6 +224,20 @@ export function EmployeeForm({
               defaultValue={employee?.guarantor_address ?? ""}
             />
           </div>
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Documents
+        </h2>
+        <div className="rounded-lg border border-dashed bg-muted/20 px-4 py-4 text-sm text-muted-foreground">
+          <p className="font-medium text-foreground">Uploads coming next</p>
+          <p className="mt-1">
+            CV, employment letter, and ID document uploads are planned for the
+            next HR update (before Phase 2). The database is already prepared
+            for these files.
+          </p>
         </div>
       </section>
 

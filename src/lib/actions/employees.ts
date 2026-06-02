@@ -106,7 +106,23 @@ export async function createEmployee(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.from("employees").insert(toEmployeeRow(input));
+
+  const { data: employeeCode, error: codeError } = await supabase.rpc(
+    "generate_employee_code",
+  );
+
+  if (codeError || !employeeCode) {
+    return {
+      error:
+        codeError?.message ??
+        "Could not generate employee ID. Run migration 00002 in Supabase.",
+    };
+  }
+
+  const { error } = await supabase.from("employees").insert({
+    ...toEmployeeRow(input),
+    employee_code: employeeCode,
+  });
 
   if (error) {
     return { error: error.message };
@@ -145,6 +161,8 @@ export async function updateEmployee(
 }
 
 export async function getEmployeesList(page: number, query: string) {
+  await requireHrAdmin();
+
   const supabase = await createClient();
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -176,10 +194,14 @@ export async function getEmployeesList(page: number, query: string) {
 }
 
 export async function getEmployeeById(id: string) {
+  await requireHrAdmin();
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("employees")
-    .select("*")
+    .select(
+      "id, employee_code, first_name, last_name, phone, email, address, hire_date, status, employee_type, department, job_title, monthly_salary, guarantor_name, guarantor_phone, guarantor_address, created_at, updated_at",
+    )
     .eq("id", id)
     .maybeSingle();
 

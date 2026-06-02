@@ -22,10 +22,9 @@ export async function recordLoginAttendance() {
       attendance_date: attendanceDate,
     });
 
-    await supabase
-      .from("users")
-      .update({ last_login: now.toISOString() })
-      .eq("id", user.id);
+    await supabase.rpc("update_own_last_login", {
+      login_time: now.toISOString(),
+    });
   } catch {
     // Attendance must never block login.
   }

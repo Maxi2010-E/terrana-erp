@@ -1,4 +1,5 @@
 import { UserStatusBadge } from "@/components/employees/status-badge";
+import { UserRoleSelect } from "@/components/users/user-role-select";
 import { LinkButton } from "@/components/ui/link-button";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +24,8 @@ function formatDateTime(value: string | null) {
 }
 
 export default async function UsersPage({ searchParams }: UsersPageProps) {
-  const { role: currentRole } = await requireHrAdmin();
+  const { role: currentRole, authUser } = await requireHrAdmin();
+  const canManageRoles = currentRole === "super_admin";
   const canResetSuperAdmin = currentRole === "super_admin";
   const params = await searchParams;
   const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
@@ -109,7 +111,14 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                         </td>
                         <td className="py-3 pr-4">{user.email}</td>
                         <td className="py-3 pr-4">
-                          {ROLE_LABELS[user.role as AppRole] ?? user.role}
+                          {canManageRoles && user.id !== authUser?.id ? (
+                            <UserRoleSelect
+                              userId={user.id}
+                              currentRole={user.role as AppRole}
+                            />
+                          ) : (
+                            ROLE_LABELS[user.role as AppRole] ?? user.role
+                          )}
                         </td>
                         <td className="py-3 pr-4">
                           <UserStatusBadge status={user.status} />

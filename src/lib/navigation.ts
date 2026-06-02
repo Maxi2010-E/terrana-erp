@@ -98,7 +98,7 @@ export const NAV_ITEMS: NavItem[] = [
     title: "Processing",
     href: "/processing",
     icon: Factory,
-    roles: ["super_admin", "admin", "inventory_manager"],
+    roles: ["super_admin", "admin", "accounts", "inventory_manager"],
     phase: 4,
   },
   {

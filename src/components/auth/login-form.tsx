@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { mapAuthError } from "@/lib/auth/error-messages";
 import { recordLoginSessionAction } from "@/lib/actions/auth";
+import { safeRedirectPath } from "@/lib/auth/safe-redirect";
 import { createClient } from "@/lib/supabase/client";
 import { terranaColors } from "@/lib/theme";
 
@@ -87,7 +88,7 @@ export function LoginForm({
 
       void recordLoginSessionAction();
 
-      const destination = redirectTo.startsWith("/") ? redirectTo : "/dashboard";
+      const destination = safeRedirectPath(redirectTo);
       window.location.replace(destination);
     } catch {
       setError("Sign in failed. Check your connection and try again.");

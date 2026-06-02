@@ -12,7 +12,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       ? "Your account has been disabled. Contact an administrator."
       : params.error === "auth_callback_failed"
         ? "Authentication failed. Please try again."
-        : null;
+        : params.error === "profile_missing"
+          ? "Your user profile is not set up. Contact an administrator."
+          : null;
 
   const initialMessage =
     params.message === "password_updated"

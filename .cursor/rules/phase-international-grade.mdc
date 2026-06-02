@@ -1,0 +1,35 @@
+---
+description: International ERP grade card — required at end of every phase
+alwaysApply: true
+---
+
+# Phase international grade (Terrana ERP)
+
+At the **end of every phase**, grade Terrana against tier-1 references before starting the next phase.
+
+## Benchmarks
+
+| Area | References |
+|------|------------|
+| ERP master data | Odoo, SAP Business One, NetSuite |
+| Speed / UX | Banking apps, Stripe Dashboard |
+| Security | OWASP + Supabase RLS |
+
+## Grade scale
+
+| Score | Meaning |
+|-------|---------|
+| **Beat** | Better or faster than reference at this scale |
+| **Match** | On par — OK to ship |
+| **Below** | Gap — fix before next phase |
+
+**Rule:** No phase ships with any **Below** score.
+
+## Report after each phase
+
+Include in SETUP.md or commit notes:
+
+1. Grade table (UX, data model, speed, security, future-proofing)
+2. Manual test checklist (all items checked)
+3. Build + lint pass
+4. Known deferred items (explicit phase number)

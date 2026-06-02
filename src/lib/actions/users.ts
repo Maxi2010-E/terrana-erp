@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireHrAdmin } from "@/lib/auth/require-role";
+import { requireHrAdmin, requireSuperAdmin } from "@/lib/auth/require-role";
 import { PAGE_SIZE } from "@/lib/employees/constants";
 import { APP_ROLES, type AppRole } from "@/lib/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -17,7 +17,7 @@ export async function createAppUser(
   _prev: UserFormState,
   formData: FormData,
 ): Promise<UserFormState> {
-  await requireHrAdmin();
+  const { role: actorRole } = await requireHrAdmin();
 
   const employeeId = String(formData.get("employee_id") ?? "").trim();
   const username = String(formData.get("username") ?? "").trim();
@@ -35,6 +35,10 @@ export async function createAppUser(
 
   if (!APP_ROLES.includes(role)) {
     return { error: "Invalid role selected." };
+  }
+
+  if (role === "super_admin" && actorRole !== "super_admin") {
+    return { error: "Only a super admin can create super admin accounts." };
   }
 
   const supabase = await createClient();
@@ -97,6 +101,8 @@ export async function createAppUser(
 }
 
 export async function getUsersList(page: number, query: string) {
+  await requireHrAdmin();
+
   const supabase = await createClient();
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -141,6 +147,8 @@ export async function getUsersList(page: number, query: string) {
 }
 
 export async function getEmployeesWithoutUsers() {
+  await requireHrAdmin();
+
   const supabase = await createClient();
   const { data: employees, error: employeesError } = await supabase
     .from("employees")
@@ -169,16 +177,93 @@ export async function getEmployeesWithoutUsers() {
 }
 
 export async function updateUserStatus(userId: string, status: string) {
-  await requireHrAdmin();
+  const { authUser, role: actorRole } = await requireHrAdmin();
 
   if (!["active", "disabled"].includes(status)) {
     throw new Error("Invalid status.");
   }
 
+  if (userId === authUser?.id) {
+    throw new Error("You cannot change your own account status.");
+  }
+
   const supabase = await createClient();
+
+  const { data: target, error: lookupError } = await supabase
+    .from("users")
+    .select("id, role")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (lookupError || !target) {
+    throw new Error("User not found.");
+  }
+
+  if (target.role === "super_admin") {
+    throw new Error("Super admin accounts cannot be disabled.");
+  }
+
+  if (target.role === "admin" && actorRole !== "super_admin") {
+    throw new Error("Only a super admin can change admin account status.");
+  }
+
   const { error } = await supabase
     .from("users")
     .update({ status })
+    .eq("id", userId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/users");
+}
+
+export async function updateUserRole(userId: string, role: string) {
+  const { authUser } = await requireSuperAdmin();
+
+  if (!APP_ROLES.includes(role as AppRole)) {
+    throw new Error("Invalid role selected.");
+  }
+
+  if (!authUser || userId === authUser.id) {
+    throw new Error("You cannot change your own role.");
+  }
+
+  const supabase = await createClient();
+
+  const { data: target, error: lookupError } = await supabase
+    .from("users")
+    .select("id, role")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (lookupError || !target) {
+    throw new Error("User not found.");
+  }
+
+  if (target.role === role) {
+    return;
+  }
+
+  if (target.role === "super_admin" && role !== "super_admin") {
+    const { count, error: countError } = await supabase
+      .from("users")
+      .select("id", { count: "exact", head: true })
+      .eq("role", "super_admin");
+
+    if (countError) {
+      throw new Error(countError.message);
+    }
+
+    if ((count ?? 0) <= 1) {
+      throw new Error("Cannot change the role of the only super admin.");
+    }
+  }
+
+  const { error } = await supabase
+    .from("users")
+    .update({ role: role as AppRole })
     .eq("id", userId);
 
   if (error) {

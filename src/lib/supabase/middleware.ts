@@ -1,3 +1,4 @@
+import { safeRedirectPath } from "@/lib/auth/safe-redirect";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -72,8 +73,7 @@ export async function updateSession(request: NextRequest) {
     if (user && isLoginPage) {
       const redirectParam = request.nextUrl.searchParams.get("redirect");
       const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname =
-        redirectParam?.startsWith("/") ? redirectParam : "/dashboard";
+      redirectUrl.pathname = safeRedirectPath(redirectParam);
       redirectUrl.search = "";
       return NextResponse.redirect(redirectUrl);
     }

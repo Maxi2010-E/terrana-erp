@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { CreateUserForm } from "@/components/users/create-user-form";
 import { LinkButton } from "@/components/ui/link-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
