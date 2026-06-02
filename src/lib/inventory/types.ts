@@ -26,6 +26,22 @@ export type InventoryBatchListRow = {
   date_graded: string;
   status: InventoryStatus;
   source_count: number;
+  mix_sources: InventoryMixSourceLine[];
+  mix_summary: InventoryMixSummary | null;
+};
+
+export type InventoryMixSourceLine = {
+  pre_stock_number: string;
+  source_product_type: string;
+  bags: number;
+  total_kg: number;
+};
+
+export type InventoryMixSummary = {
+  input_bags: number;
+  input_kg: number;
+  output_bags: number;
+  output_kg: number;
 };
 
 export type InventorySourceRow = {

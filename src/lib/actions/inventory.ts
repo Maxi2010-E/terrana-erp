@@ -288,7 +288,16 @@ export async function getInventoryBatchesList(
       total_kg,
       date_graded,
       status,
-      inventory_sources ( id )
+      grade_composition,
+      inventory_sources (
+        id,
+        bags,
+        total_kg,
+        source_product_type,
+        pre_stock!inner (
+          pre_stock_number
+        )
+      )
     `,
       { count: "exact" },
     )
@@ -311,7 +320,37 @@ export async function getInventoryBatchesList(
   }
 
   const rows: InventoryBatchListRow[] = (data ?? []).map((row) => {
-    const sources = row.inventory_sources as { id: string }[] | null;
+    const sources = (row.inventory_sources ?? []) as {
+      bags: number;
+      total_kg: number;
+      source_product_type: string;
+      pre_stock:
+        | { pre_stock_number: string }
+        | { pre_stock_number: string }[];
+    }[];
+
+    const mix_sources = sources.map((source) => {
+      const preStockJoin = source.pre_stock;
+      const preStock = Array.isArray(preStockJoin) ? preStockJoin[0] : preStockJoin;
+
+      return {
+        pre_stock_number: preStock?.pre_stock_number ?? "—",
+        source_product_type: source.source_product_type,
+        bags: Number(source.bags),
+        total_kg: Number(source.total_kg),
+      };
+    });
+
+    const composition = row.grade_composition as GradeComposition | null;
+    const mix_summary =
+      composition?.input_kg != null && composition.output_kg != null
+        ? {
+            input_bags: composition.input_bags ?? mix_sources.reduce((s, l) => s + l.bags, 0),
+            input_kg: composition.input_kg,
+            output_bags: composition.output_bags ?? Number(row.bags),
+            output_kg: composition.output_kg,
+          }
+        : null;
 
     return {
       id: row.id,
@@ -321,7 +360,9 @@ export async function getInventoryBatchesList(
       total_kg: Number(row.total_kg),
       date_graded: row.date_graded,
       status: row.status as InventoryStatus,
-      source_count: sources?.length ?? 0,
+      source_count: mix_sources.length,
+      mix_sources,
+      mix_summary,
     };
   });
 

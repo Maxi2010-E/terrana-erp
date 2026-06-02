@@ -1,4 +1,5 @@
 import { InventoryBatchTable } from "@/components/inventory/inventory-batch-table";
+import { InventoryMixToggle } from "@/components/inventory/inventory-mix-toggle";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { LinkButton } from "@/components/ui/link-button";
@@ -8,7 +9,7 @@ import { getInventoryBatchesList } from "@/lib/actions/inventory";
 import { requireInventoryRead } from "@/lib/auth/require-role";
 
 type ExportInventoryPageProps = {
-  searchParams: Promise<{ page?: string; q?: string; message?: string }>;
+  searchParams: Promise<{ page?: string; q?: string; message?: string; mix?: string }>;
 };
 
 function recordLabel(total: number): string {
@@ -35,6 +36,7 @@ export default async function ExportInventoryPage({
   const params = await searchParams;
   const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
   const query = params.q ?? "";
+  const showMixDetails = params.mix === "1";
   const flash = successMessage(params.message);
   const { rows, total } = await getInventoryBatchesList(page, query);
 
@@ -69,18 +71,33 @@ export default async function ExportInventoryPage({
               placeholder="Search by inventory number or product…"
               className="flex h-10 flex-1 rounded-xl border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             />
+            {showMixDetails ? (
+              <input type="hidden" name="mix" value="1" />
+            ) : null}
             <Button type="submit" variant="outline">
               Search
             </Button>
           </form>
         </CardHeader>
         <CardContent className="space-y-5 px-4 pb-6 pt-5">
-          <InventoryBatchTable rows={rows} />
+          <div className="flex justify-end">
+            <InventoryMixToggle
+              enabled={showMixDetails}
+              query={query || undefined}
+              page={page}
+            />
+          </div>
+
+          <InventoryBatchTable rows={rows} showMixDetails={showMixDetails} />
+
           <PaginationBar
             page={page}
             total={total}
             pathname="/inventory/export"
-            query={{ q: query || undefined }}
+            query={{
+              q: query || undefined,
+              mix: showMixDetails ? "1" : undefined,
+            }}
           />
         </CardContent>
       </Card>
