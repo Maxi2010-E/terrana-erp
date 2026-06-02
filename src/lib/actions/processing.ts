@@ -18,6 +18,7 @@ import {
   type ProcurementType,
   type ProductCondition,
 } from "@/lib/procurement/constants";
+import { toCleanPreStockProductType } from "@/lib/procurement/product-type";
 import {
   calcBagsRemaining,
   calcProcessingOutputKg,
@@ -1098,11 +1099,13 @@ export async function completeProcessingSession(
     return { error: preStockNumberError.message };
   }
 
+  const preStockProductType = toCleanPreStockProductType(batch.product_type);
+
   const { error: preStockError } = await supabase.from("pre_stock").insert({
     pre_stock_number: preStockNumber as string,
     source_type: "processing",
     source_id: sessionId,
-    product_type: batch.product_type,
+    product_type: preStockProductType,
     bags: output.bags_produced,
     bags_received: output.bags_produced,
     total_kg: totalOutputKg,

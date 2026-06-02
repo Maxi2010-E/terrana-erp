@@ -273,6 +273,7 @@ In Supabase Dashboard → **SQL Editor**, run in order:
 1. `supabase/migrations/00017_phase5_inventory.sql`
 2. `supabase/migrations/00018_procurement_pre_stock.sql` — pre-stock from approved on-site procurement
 3. `supabase/migrations/00019_partial_grading.sql` — partial bag grading, mixed types, graded composition
+4. `supabase/migrations/00020_processing_pre_stock_clean_names.sql` — processing pre-stock uses Clean labels (fixes existing Raw rows)
 
 Ensure Phase 4 migrations **00013 → 00016** are already applied.
 
@@ -287,7 +288,7 @@ npm run dev
 Use **admin**, **inventory_manager**, or **super_admin**.
 
 **Pre-stock**
-- [ ] Complete a processing session (Phase 4) → pre-stock row appears (`PSK-2026-001`)
+- [ ] Complete a processing session (Phase 4) → pre-stock row appears (`PSK-2026-001`) with **Clean** product type (not Raw)
 - [ ] Approve clean on-site procurement with pre-stock → pre-stock row appears
 - [ ] **Inventory → Pre-stock** lists number, source link, product, bags available / received, kg, status
 - [ ] Search and status filter work

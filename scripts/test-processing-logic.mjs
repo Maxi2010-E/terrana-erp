@@ -95,5 +95,27 @@ assert(
   calcWasteWeightKg({ number_of_bags: 0, kg_per_bag: 30, extra_kg: 0 }) === 0,
 );
 
+function toCleanPreStockProductType(sourceProductType) {
+  const trimmed = sourceProductType.trim();
+  if (trimmed.startsWith("Raw ")) {
+    return `Clean ${trimmed.slice(4)}`;
+  }
+  return trimmed;
+}
+
+console.log("\nProcessing pre-stock product type");
+assert(
+  "raw new black becomes clean",
+  toCleanPreStockProductType("Raw New Black") === "Clean New Black",
+);
+assert(
+  "raw old red becomes clean",
+  toCleanPreStockProductType("Raw Old Red") === "Clean Old Red",
+);
+assert(
+  "already clean unchanged",
+  toCleanPreStockProductType("Clean New Red") === "Clean New Red",
+);
+
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

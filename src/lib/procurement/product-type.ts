@@ -39,6 +39,15 @@ export function buildProductType(input: {
   return parts.join(" ");
 }
 
+/** Pre-stock from processing: raw input becomes clean exportable goods (same age/color). */
+export function toCleanPreStockProductType(sourceProductType: string): string {
+  const trimmed = sourceProductType.trim();
+  if (trimmed.startsWith("Raw ")) {
+    return `Clean ${trimmed.slice(4)}`;
+  }
+  return trimmed;
+}
+
 export function calcTotalKg(input: {
   procurement_type: ProcurementType;
   product_condition: ProductCondition;
