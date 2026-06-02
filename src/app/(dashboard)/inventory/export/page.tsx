@@ -1,5 +1,5 @@
 import { InventoryBatchTable } from "@/components/inventory/inventory-batch-table";
-import { InventoryMixToggle } from "@/components/inventory/inventory-mix-toggle";
+import { InventoryMixViewSwitch } from "@/components/inventory/inventory-mix-view-switch";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { LinkButton } from "@/components/ui/link-button";
@@ -63,31 +63,31 @@ export default async function ExportInventoryPage({
       ) : null}
 
       <Card className="rounded-2xl shadow-sm">
-        <CardHeader className="border-b border-border/60 pb-4">
-          <form className="flex max-w-md gap-2" method="get">
-            <input
-              name="q"
-              defaultValue={query}
-              placeholder="Search by inventory number or product…"
-              className="flex h-10 flex-1 rounded-xl border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-            />
-            {showMixDetails ? (
-              <input type="hidden" name="mix" value="1" />
-            ) : null}
-            <Button type="submit" variant="outline">
-              Search
-            </Button>
-          </form>
-        </CardHeader>
-        <CardContent className="space-y-5 px-4 pb-6 pt-5">
-          <div className="flex justify-end">
-            <InventoryMixToggle
-              enabled={showMixDetails}
+        <CardHeader className="gap-4 border-b border-border/60 pb-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <form className="flex w-full max-w-md gap-2">
+              <input
+                name="q"
+                defaultValue={query}
+                placeholder="Search by inventory number or product…"
+                className="flex h-10 flex-1 rounded-xl border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              />
+              {showMixDetails ? (
+                <input type="hidden" name="mix" value="1" />
+              ) : null}
+              <Button type="submit" variant="outline">
+                Search
+              </Button>
+            </form>
+
+            <InventoryMixViewSwitch
+              showMixDetails={showMixDetails}
               query={query || undefined}
               page={page}
             />
           </div>
-
+        </CardHeader>
+        <CardContent className="space-y-5 px-4 pb-6 pt-5">
           <InventoryBatchTable rows={rows} showMixDetails={showMixDetails} />
 
           <PaginationBar

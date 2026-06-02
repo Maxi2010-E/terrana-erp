@@ -19,27 +19,29 @@ export function InventoryBatchTable({
   rows,
   showMixDetails = false,
 }: InventoryBatchTableProps) {
-  const columnCount = showMixDetails ? 9 : 8;
+  const columnCount = showMixDetails ? 8 : 8;
 
   return (
     <div className="overflow-x-auto">
       <table
         className={`w-full border-collapse text-left text-sm ${
-          showMixDetails ? "min-w-[1120px]" : "min-w-[920px]"
+          showMixDetails ? "min-w-[1040px]" : "min-w-[920px]"
         }`}
       >
         <thead>
           <tr className="border-b border-border/60 text-muted-foreground">
             <th className={`${HEAD_CELL} w-[7.5rem]`}>Inventory</th>
             <th className={`${HEAD_CELL} min-w-[9rem]`}>Product</th>
+            {showMixDetails ? (
+              <th className={`${HEAD_CELL} min-w-[11rem]`}>Mixed from</th>
+            ) : null}
             <th className={`${HEAD_CELL} min-w-[4rem]`}>Bags</th>
             <th className={`${HEAD_CELL} min-w-[4.5rem]`}>KG</th>
-            {showMixDetails ? (
-              <th className={`${HEAD_CELL} min-w-[12rem]`}>Mix sources</th>
-            ) : null}
             <th className={`${HEAD_CELL} min-w-[6.5rem]`}>Graded</th>
             <th className={`${HEAD_CELL} min-w-[7rem]`}>Status</th>
-            <th className={`${HEAD_CELL} min-w-[4rem]`}>Sources</th>
+            {!showMixDetails ? (
+              <th className={`${HEAD_CELL} min-w-[4rem]`}>Sources</th>
+            ) : null}
             <th className={`${HEAD_CELL} w-28`}>Actions</th>
           </tr>
         </thead>
@@ -66,12 +68,6 @@ export function InventoryBatchTable({
                 <td className={BODY_CELL}>
                   <ProductTypeBadge productType={row.product_type} />
                 </td>
-                <td className={`${BODY_CELL} tabular-nums`}>
-                  {row.bags.toLocaleString()}
-                </td>
-                <td className={`${BODY_CELL} tabular-nums`}>
-                  {row.total_kg.toLocaleString()}
-                </td>
                 {showMixDetails ? (
                   <td className={BODY_CELL}>
                     <InventoryMixDetailCell
@@ -80,6 +76,12 @@ export function InventoryBatchTable({
                     />
                   </td>
                 ) : null}
+                <td className={`${BODY_CELL} tabular-nums`}>
+                  {row.bags.toLocaleString()}
+                </td>
+                <td className={`${BODY_CELL} tabular-nums`}>
+                  {row.total_kg.toLocaleString()}
+                </td>
                 <td
                   className={`${BODY_CELL} whitespace-nowrap tabular-nums text-muted-foreground`}
                 >
@@ -90,9 +92,11 @@ export function InventoryBatchTable({
                     status={row.status as InventoryStatus}
                   />
                 </td>
-                <td className={`${BODY_CELL} tabular-nums`}>
-                  {row.source_count.toLocaleString()}
-                </td>
+                {!showMixDetails ? (
+                  <td className={`${BODY_CELL} tabular-nums text-muted-foreground`}>
+                    {row.source_count.toLocaleString()}
+                  </td>
+                ) : null}
                 <td className={BODY_CELL}>
                   <TableViewAction href={`/inventory/export/${row.id}`} />
                 </td>
