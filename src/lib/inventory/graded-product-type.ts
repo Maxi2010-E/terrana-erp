@@ -8,6 +8,9 @@
  */
 
 import { GRADED_COMBINATION_LABELS } from "@/lib/inventory/graded-product-type.constants";
+import {
+  nominalExportKg,
+} from "@/lib/inventory/grading-variance";
 import type {
   GradeComposition,
   GradeCompositionLine,
@@ -200,11 +203,24 @@ export function proportionalKg(
 
 export function buildGradeComposition(
   lines: GradeCompositionLine[],
+  output: { bags: number; total_kg: number },
 ): GradeComposition {
+  const input_bags = lines.reduce((sum, line) => sum + line.bags, 0);
+  const input_kg =
+    Math.round(lines.reduce((sum, line) => sum + line.total_kg, 0) * 1000) /
+    1000;
+
   return {
     lines,
     derived_label: buildGradedProductType(
       lines.map((line) => line.source_product_type),
     ),
+    input_bags,
+    input_kg,
+    output_bags: output.bags,
+    output_kg: output.total_kg,
+    nominal_output_kg: nominalExportKg(output.bags),
+    bag_variance: output.bags - input_bags,
+    kg_variance: Math.round((output.total_kg - input_kg) * 1000) / 1000,
   };
 }

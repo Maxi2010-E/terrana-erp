@@ -502,6 +502,22 @@ export async function createInventoryBatch(
 
   const notes = String(formData.get("notes") ?? "").trim() || null;
 
+  const outputBags = Number.parseInt(
+    String(formData.get("output_bags") ?? "").trim(),
+    10,
+  );
+  const outputKg = Number.parseFloat(
+    String(formData.get("output_kg") ?? "").trim(),
+  );
+
+  if (!Number.isFinite(outputBags) || outputBags <= 0) {
+    return { error: "Enter export bags after mix (post re-bag count)." };
+  }
+
+  if (!Number.isFinite(outputKg) || outputKg <= 0) {
+    return { error: "Enter total export KG after mix and re-bagging." };
+  }
+
   const preStockIds = [...new Set(gradeLines.map((line) => line.preStockId))];
   const supabase = await createClient();
   const { data: preStockRows, error: fetchError } = await supabase
@@ -567,22 +583,24 @@ export async function createInventoryBatch(
     });
   }
 
-  const totalBags = compositionLines.reduce((sum, line) => sum + line.bags, 0);
-  const totalKg = compositionLines.reduce((sum, line) => sum + line.total_kg, 0);
+  const inputKg = compositionLines.reduce((sum, line) => sum + line.total_kg, 0);
 
-  if (totalKg <= 0) {
-    return { error: "Total KG must be greater than zero." };
+  if (inputKg <= 0) {
+    return { error: "Pre-mix input KG must be greater than zero." };
   }
 
-  const gradeComposition = buildGradeComposition(compositionLines);
+  const gradeComposition = buildGradeComposition(compositionLines, {
+    bags: outputBags,
+    total_kg: Math.round(outputKg * 1000) / 1000,
+  });
   const productType = gradeComposition.derived_label;
 
   const { data: inserted, error: insertError } = await supabase
     .from("inventory_batches")
     .insert({
       product_type: productType,
-      bags: totalBags,
-      total_kg: totalKg,
+      bags: outputBags,
+      total_kg: Math.round(outputKg * 1000) / 1000,
       date_graded: dateGraded,
       status: "available",
       notes,

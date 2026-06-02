@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useMemo, useState } from "react";
 
+import { GradingVarianceAlerts } from "@/components/inventory/grading-variance-alerts";
 import { ProductTypeBadge } from "@/components/procurement/product-type-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,10 @@ import {
   describeGradedCombination,
   proportionalKg,
 } from "@/lib/inventory/graded-product-type";
+import {
+  EXPORT_STANDARD_KG_PER_BAG,
+  nominalExportKg,
+} from "@/lib/inventory/grading-variance";
 import { formatPreStockNumber } from "@/lib/inventory/inventory-number";
 import type { AvailablePreStockOption } from "@/lib/inventory/types";
 
@@ -38,6 +43,9 @@ export function CreateInventoryForm({ options }: CreateInventoryFormProps) {
   );
   const [lines, setLines] = useState<GradeLineState[]>([]);
   const [productFilter, setProductFilter] = useState<string>("all");
+  const [outputBags, setOutputBags] = useState("");
+  const [outputKg, setOutputKg] = useState("");
+  const [outputKgManual, setOutputKgManual] = useState(false);
 
   const optionById = useMemo(
     () => new Map(options.map((option) => [option.id, option])),
@@ -96,7 +104,7 @@ export function CreateInventoryForm({ options }: CreateInventoryFormProps) {
     [activeLines],
   );
 
-  const totals = useMemo(
+  const inputTotals = useMemo(
     () =>
       activeLines.reduce(
         (acc, line) => ({
@@ -109,6 +117,16 @@ export function CreateInventoryForm({ options }: CreateInventoryFormProps) {
       ),
     [activeLines],
   );
+
+  const parsedOutputBags = Number.parseInt(outputBags, 10);
+  const parsedOutputKg = Number.parseFloat(outputKg);
+  const hasValidOutput =
+    Number.isFinite(parsedOutputBags) &&
+    parsedOutputBags > 0 &&
+    Number.isFinite(parsedOutputKg) &&
+    parsedOutputKg > 0;
+
+  const nominalKg = hasValidOutput ? nominalExportKg(parsedOutputBags) : 0;
 
   const gradeLinesJson = useMemo(
     () =>
@@ -159,6 +177,19 @@ export function CreateInventoryForm({ options }: CreateInventoryFormProps) {
     );
   }
 
+  function handleOutputBagsChange(value: string) {
+    setOutputBags(value);
+    const bags = Number.parseInt(value, 10);
+    if (!outputKgManual && Number.isFinite(bags) && bags > 0) {
+      setOutputKg(String(nominalExportKg(bags)));
+    }
+  }
+
+  function handleOutputKgChange(value: string) {
+    setOutputKgManual(true);
+    setOutputKg(value);
+  }
+
   const today = new Date().toISOString().slice(0, 10);
 
   if (options.length === 0) {
@@ -177,7 +208,7 @@ export function CreateInventoryForm({ options }: CreateInventoryFormProps) {
 
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Label>Add pre-stock lines to grade</Label>
+          <Label>Pre-mix input — bags from pre-stock</Label>
           {productTypes.length > 1 ? (
             <select
               value={productFilter}
@@ -195,9 +226,8 @@ export function CreateInventoryForm({ options }: CreateInventoryFormProps) {
         </div>
 
         <p className="text-sm text-muted-foreground">
-          Add one or more pre-stock rows and enter how many bags to grade from
-          each. You can mix product types; the export name is computed
-          automatically.
+          Select what goes into the mix. Bag and KG totals here are pre-mix only
+          — you weigh again after mixing and re-bagging to 25 kg export bags.
         </p>
 
         <div className="overflow-x-auto rounded-2xl border border-border/60">
@@ -297,14 +327,74 @@ export function CreateInventoryForm({ options }: CreateInventoryFormProps) {
       {activeLines.length > 0 ? (
         <div className="rounded-2xl border border-border/60 bg-muted/20 px-4 py-3 text-sm">
           <p className="font-medium">
-            Combined total: {totals.bags.toLocaleString()} bags ·{" "}
-            {totals.total_kg.toLocaleString()} kg
+            Pre-mix input: {inputTotals.bags.toLocaleString()} bags ·{" "}
+            {inputTotals.total_kg.toLocaleString()} kg
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <span>Export name:</span>
             <ProductTypeBadge productType={previewName} />
           </div>
           <p className="mt-2 text-muted-foreground">{previewHint}</p>
+        </div>
+      ) : null}
+
+      {activeLines.length > 0 ? (
+        <div className="space-y-4 rounded-2xl border border-border/60 px-4 py-4">
+          <div>
+            <Label>Post-mix export output</Label>
+            <p className="mt-1 text-sm text-muted-foreground">
+              After mixing and re-bagging to {EXPORT_STANDARD_KG_PER_BAG} kg
+              export standard, enter the actual bag count and total KG weighed.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="output_bags">Export bags after mix</Label>
+              <Input
+                id="output_bags"
+                name="output_bags"
+                type="number"
+                min={1}
+                value={outputBags}
+                onChange={(event) => handleOutputBagsChange(event.target.value)}
+                required
+                className="tabular-nums"
+                placeholder="e.g. 22"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="output_kg">Total export KG after mix</Label>
+              <Input
+                id="output_kg"
+                name="output_kg"
+                type="number"
+                min={0.001}
+                step="0.001"
+                value={outputKg}
+                onChange={(event) => handleOutputKgChange(event.target.value)}
+                required
+                className="tabular-nums"
+                placeholder={`e.g. ${EXPORT_STANDARD_KG_PER_BAG * 22}`}
+              />
+              {hasValidOutput ? (
+                <p className="text-xs text-muted-foreground">
+                  {parsedOutputBags.toLocaleString()} ×{" "}
+                  {EXPORT_STANDARD_KG_PER_BAG} kg standard ={" "}
+                  {nominalKg.toLocaleString()} kg
+                </p>
+              ) : null}
+            </div>
+          </div>
+
+          {hasValidOutput ? (
+            <GradingVarianceAlerts
+              inputBags={inputTotals.bags}
+              inputKg={inputTotals.total_kg}
+              outputBags={parsedOutputBags}
+              outputKg={parsedOutputKg}
+            />
+          ) : null}
         </div>
       ) : null}
 
@@ -337,7 +427,7 @@ export function CreateInventoryForm({ options }: CreateInventoryFormProps) {
       <Button
         type="submit"
         size="lg"
-        disabled={pending || activeLines.length === 0}
+        disabled={pending || activeLines.length === 0 || !hasValidOutput}
       >
         {pending ? "Creating…" : "Create export inventory batch"}
       </Button>

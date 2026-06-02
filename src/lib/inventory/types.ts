@@ -65,6 +65,15 @@ export type GradeCompositionLine = {
 export type GradeComposition = {
   lines: GradeCompositionLine[];
   derived_label: string;
+  /** Bags taken from pre-stock before mix */
+  input_bags?: number;
+  input_kg?: number;
+  /** Actual export bags / KG after mix and re-bag to 25 kg standard */
+  output_bags?: number;
+  output_kg?: number;
+  nominal_output_kg?: number;
+  bag_variance?: number;
+  kg_variance?: number;
 };
 
 export type AvailablePreStockOption = {

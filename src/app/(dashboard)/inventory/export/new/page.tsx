@@ -14,7 +14,7 @@ export default async function CreateExportInventoryPage() {
       <PageHeader
         title="Create export inventory"
         meta={`${options.length.toLocaleString()} available pre-stock record(s)`}
-        description="Add pre-stock lines and specify bags to grade. Mixed product types are allowed; the export name is computed automatically."
+        description="Select pre-stock for the mix, then enter actual export bags and KG after re-bagging to 25 kg standard."
         actions={
           <LinkButton variant="outline" href="/inventory/export">
             Back to export inventory

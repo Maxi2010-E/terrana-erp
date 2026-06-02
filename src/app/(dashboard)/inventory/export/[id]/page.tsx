@@ -12,6 +12,8 @@ import {
   formatInventoryNumber,
   formatPreStockNumber,
 } from "@/lib/inventory/inventory-number";
+import { GradingVarianceAlerts } from "@/components/inventory/grading-variance-alerts";
+import { EXPORT_STANDARD_KG_PER_BAG } from "@/lib/inventory/grading-variance";
 import type { InventoryStatus } from "@/lib/inventory/constants";
 
 type ExportInventoryDetailPageProps = {
@@ -82,6 +84,12 @@ export default async function ExportInventoryDetailPage({
           />
           <SummaryItem label="Bags" value={batch.bags.toLocaleString()} />
           <SummaryItem label="Total KG" value={batch.total_kg.toLocaleString()} />
+          {batch.grade_composition?.nominal_output_kg != null ? (
+            <SummaryItem
+              label="25 kg standard"
+              value={`${batch.grade_composition.nominal_output_kg.toLocaleString()} kg (${batch.bags.toLocaleString()} × ${EXPORT_STANDARD_KG_PER_BAG})`}
+            />
+          ) : null}
           <SummaryItem label="Date graded" value={batch.date_graded} />
           <SummaryItem label="Status" value={batch.status} />
           <SummaryItem
@@ -95,6 +103,53 @@ export default async function ExportInventoryDetailPage({
           ) : null}
         </CardContent>
       </Card>
+
+      {batch.grade_composition?.input_kg != null &&
+      batch.grade_composition.output_kg != null ? (
+        <Card className="rounded-2xl shadow-sm">
+          <CardHeader className="border-b border-border/60 pb-4">
+            <CardTitle className="text-base">Mix input vs export output</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Pre-mix totals from pre-stock compared with post-mix export bags
+              and KG after re-bagging to {EXPORT_STANDARD_KG_PER_BAG} kg.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4 px-4 pb-6 pt-5">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <SummaryItem
+                label="Pre-mix bags"
+                value={batch.grade_composition.input_bags?.toLocaleString() ?? "—"}
+              />
+              <SummaryItem
+                label="Pre-mix KG"
+                value={batch.grade_composition.input_kg.toLocaleString()}
+              />
+              <SummaryItem
+                label="Export bags"
+                value={batch.grade_composition.output_bags?.toLocaleString() ?? batch.bags.toLocaleString()}
+              />
+              <SummaryItem
+                label="Export KG"
+                value={batch.grade_composition.output_kg.toLocaleString()}
+              />
+              <SummaryItem
+                label="Bag variance"
+                value={formatVariance(batch.grade_composition.bag_variance)}
+              />
+              <SummaryItem
+                label="KG variance"
+                value={formatVariance(batch.grade_composition.kg_variance, " kg")}
+              />
+            </div>
+            <GradingVarianceAlerts
+              inputBags={batch.grade_composition.input_bags ?? 0}
+              inputKg={batch.grade_composition.input_kg}
+              outputBags={batch.grade_composition.output_bags ?? batch.bags}
+              outputKg={batch.grade_composition.output_kg}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card className="rounded-2xl shadow-sm">
         <CardHeader className="border-b border-border/60 pb-4">
@@ -189,4 +244,13 @@ function SummaryItem({
       <div className="mt-1 text-sm font-medium">{value}</div>
     </div>
   );
+}
+
+function formatVariance(value: number | undefined, suffix = ""): string {
+  if (value == null || !Number.isFinite(value)) {
+    return "—";
+  }
+  const rounded = Math.round(value * 1000) / 1000;
+  const prefix = rounded > 0 ? "+" : "";
+  return `${prefix}${rounded.toLocaleString()}${suffix}`;
 }
