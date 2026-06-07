@@ -1,5 +1,4 @@
 import { cache } from "react";
-import { unstable_cache } from "next/cache";
 
 import {
   getDailyExpenseNotificationCounts,
@@ -108,12 +107,6 @@ const loadSidebarBundleForRequest = cache(
   },
 );
 
-async function loadSidebarNotificationBundle(
-  role: AppRole,
-): Promise<SidebarNotificationBundle> {
-  return loadSidebarBundleForRequest(role);
-}
-
 export async function getCachedSidebarNotificationBundle(
   userId: string,
   role: AppRole,
@@ -129,18 +122,8 @@ export async function getCachedSidebarNotificationBundle(
     return inflight;
   }
 
-  const promise = (
-    process.env.NODE_ENV === "production"
-      ? unstable_cache(
-          () => loadSidebarNotificationBundle(role),
-          ["dashboard-sidebar-notifications", userId, role],
-          {
-            revalidate: SIDEBAR_NOTIFICATIONS_REVALIDATE_SECONDS,
-            tags: [`sidebar-notifications-${userId}`],
-          },
-        )()
-      : loadSidebarBundleForRequest(role)
-  ).then((value) => {
+  // Per-request + in-memory TTL only — unstable_cache cannot wrap Supabase reads (cookies).
+  const promise = loadSidebarBundleForRequest(role).then((value) => {
     sidebarNotificationCache.set(cacheKey, value);
     return value;
   });
