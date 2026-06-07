@@ -11,14 +11,18 @@ import type { AppRole } from "@/lib/roles";
 type DashboardSidebarLoaderProps = {
   userId: string;
   role: AppRole;
-  email?: string;
+  firstName: string;
+  photoUrl: string | null;
+  displayName: string;
 };
 
 const loadSidebarProps = cache(
   async ({
     userId,
     role,
-    email,
+    firstName,
+    photoUrl,
+    displayName,
   }: DashboardSidebarLoaderProps): Promise<AppSidebarProps> => {
     const {
       procurementNotifications,
@@ -33,7 +37,9 @@ const loadSidebarProps = cache(
 
     return {
       role,
-      email,
+      firstName,
+      photoUrl,
+      displayName,
       procurementNotifications,
       processingNotifications,
       paymentNotifications,

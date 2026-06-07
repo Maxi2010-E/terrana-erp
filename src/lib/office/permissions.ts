@@ -16,5 +16,5 @@ export function canDeleteGeneralBoardMessage(role: AppRole): boolean {
 }
 
 export function canManageFacilityGeofence(role: AppRole): boolean {
-  return hasRole(role, OFFICE_ADMIN_ROLES);
+  return role === "super_admin";
 }

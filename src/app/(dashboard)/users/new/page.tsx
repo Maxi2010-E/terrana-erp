@@ -14,7 +14,8 @@ export default async function NewUserPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Create user</h1>
           <p className="text-sm text-muted-foreground">
-            Select an employee, then assign login credentials and role.
+            Select an administrative employee — their HR email becomes the login
+            — then set a temporary password and role.
           </p>
         </div>
         <LinkButton variant="outline" href="/users">

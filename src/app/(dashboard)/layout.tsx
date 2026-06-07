@@ -29,7 +29,9 @@ export default async function DashboardLayout({
   const loaderProps = {
     userId: appUser.id,
     role,
-    email: authUser.email,
+    firstName: appUser.firstName,
+    photoUrl: appUser.photoUrl,
+    displayName: appUser.displayName,
   };
 
   const [sidebar, mobileNav, payrollBanner] = await Promise.all([
@@ -40,7 +42,7 @@ export default async function DashboardLayout({
 
   return (
     <DashboardShell sidebar={sidebar} mobileNav={mobileNav}>
-      <AppHeader />
+      <AppHeader displayName={appUser.displayName} />
       {payrollBanner}
       <main
         data-layout="dashboard-page-scroll"

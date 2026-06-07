@@ -42,6 +42,19 @@
   font-weight: 700 !important;
 }
 
+[data-layout="sidebar-brand-icon"][data-has-photo="true"] {
+  padding: 0 !important;
+  overflow: hidden !important;
+  background-color: var(--terrana-sidebar-hover) !important;
+}
+
+[data-layout="sidebar-brand-icon"] img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+}
+
 [data-layout="sidebar-brand-title"] {
   font-size: 1rem !important;
   font-weight: 600 !important;

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireHrAdmin, requireSuperAdmin } from "@/lib/auth/require-role";
 import { PAGE_SIZE } from "@/lib/employees/constants";
+import type { UserEligibleEmployeeOption } from "@/lib/employees/types";
 import { APP_ROLES, type AppRole } from "@/lib/roles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -20,13 +21,11 @@ export async function createAppUser(
   const { role: actorRole } = await requireHrAdmin();
 
   const employeeId = String(formData.get("employee_id") ?? "").trim();
-  const username = String(formData.get("username") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const role = String(formData.get("role") ?? "warehouse_manager") as AppRole;
 
-  if (!employeeId || !username || !email || !password) {
-    return { error: "Employee, username, email, and password are required." };
+  if (!employeeId || !password) {
+    return { error: "Employee and password are required." };
   }
 
   if (password.length < 8) {
@@ -45,7 +44,7 @@ export async function createAppUser(
 
   const { data: employee, error: employeeError } = await supabase
     .from("employees")
-    .select("id, status")
+    .select("id, status, employee_type, email")
     .eq("id", employeeId)
     .maybeSingle();
 
@@ -55,6 +54,17 @@ export async function createAppUser(
 
   if (employee.status !== "active") {
     return { error: "Only active employees can become users." };
+  }
+
+  if (employee.employee_type !== "administrative") {
+    return { error: "Only administrative employees can have login accounts." };
+  }
+
+  const email = String(employee.email ?? "").trim();
+  if (!email) {
+    return {
+      error: "This employee has no email on file. Add it in HR first.",
+    };
   }
 
   const { data: existingUser } = await supabase
@@ -73,7 +83,6 @@ export async function createAppUser(
       email,
       password,
       email_confirm: true,
-      user_metadata: { username },
     });
 
   if (authError || !authData.user) {
@@ -84,7 +93,6 @@ export async function createAppUser(
     .from("users")
     .update({
       email,
-      username,
       role,
       status: "active",
       employee_id: employeeId,
@@ -113,7 +121,6 @@ export async function getUsersList(page: number, query: string) {
       `
       id,
       email,
-      username,
       role,
       status,
       last_login,
@@ -132,9 +139,7 @@ export async function getUsersList(page: number, query: string) {
   const trimmed = query.trim();
   if (trimmed) {
     const term = `%${trimmed}%`;
-    builder = builder.or(
-      `email.ilike.${term},username.ilike.${term},role.ilike.${term}`,
-    );
+    builder = builder.or(`email.ilike.${term},role.ilike.${term}`);
   }
 
   const { data, count, error } = await builder;
@@ -146,14 +151,21 @@ export async function getUsersList(page: number, query: string) {
   return { rows: data ?? [], total: count ?? 0 };
 }
 
-export async function getEmployeesWithoutUsers() {
+export async function getEmployeesWithoutUsers(): Promise<
+  UserEligibleEmployeeOption[]
+> {
   await requireHrAdmin();
 
   const supabase = await createClient();
   const { data: employees, error: employeesError } = await supabase
     .from("employees")
-    .select("id, employee_code, first_name, last_name, department")
+    .select(
+      "id, employee_code, first_name, last_name, department, employee_type, email",
+    )
     .eq("status", "active")
+    .eq("employee_type", "administrative")
+    .not("email", "is", null)
+    .neq("email", "")
     .order("last_name");
 
   if (employeesError) {
@@ -173,7 +185,9 @@ export async function getEmployeesWithoutUsers() {
     (linkedUsers ?? []).map((row) => row.employee_id as string),
   );
 
-  return (employees ?? []).filter((employee) => !linkedIds.has(employee.id));
+  return (employees ?? [])
+    .filter((employee) => !linkedIds.has(employee.id))
+    .map(({ employee_type: _type, ...employee }) => employee);
 }
 
 export async function updateUserStatus(userId: string, status: string) {
@@ -279,7 +293,7 @@ export async function getUserForPasswordReset(userId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("users")
-    .select("id, email, username, role")
+    .select("id, email, role")
     .eq("id", userId)
     .maybeSingle();
 

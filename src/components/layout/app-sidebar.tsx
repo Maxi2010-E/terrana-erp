@@ -76,7 +76,9 @@ import { cn } from "@/lib/utils";
 
 type AppSidebarProps = {
   role: AppRole;
-  email?: string;
+  firstName: string;
+  photoUrl: string | null;
+  displayName: string;
   procurementNotifications?: ProcurementNotifications;
   processingNotifications?: ProcessingQueueNotifications;
   paymentNotifications?: PaymentNotifications;
@@ -95,15 +97,36 @@ const sidebarStyle = {
   borderColor: terranaColors.sidebarBorder,
 } as const;
 
+function SidebarBrandIcon({
+  photoUrl,
+  displayName,
+}: {
+  photoUrl: string | null;
+  displayName: string;
+}) {
+  if (photoUrl) {
+    return (
+      <div data-layout="sidebar-brand-icon" data-has-photo="true">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={photoUrl}
+          alt={displayName ? `${displayName} profile photo` : "Profile photo"}
+          decoding="async"
+        />
+      </div>
+    );
+  }
+
+  return <div data-layout="sidebar-brand-icon">T</div>;
+}
+
 function SidebarUser({
-  email,
+  firstName,
   role,
 }: {
-  email?: string;
+  firstName: string;
   role: AppRole;
 }) {
-  const displayName = email?.split("@")[0] ?? "User";
-
   return (
     <div
       data-layout="sidebar-user"
@@ -111,10 +134,10 @@ function SidebarUser({
       <div data-layout="sidebar-user-card">
         <div data-layout="sidebar-user-profile">
           <div data-layout="sidebar-user-avatar">
-            {displayName.charAt(0).toUpperCase()}
+            {firstName.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <p data-layout="sidebar-user-name">{displayName}</p>
+            <p data-layout="sidebar-user-name">{firstName}</p>
             <p data-layout="sidebar-user-role">{ROLE_LABELS[role]}</p>
           </div>
         </div>
@@ -409,7 +432,9 @@ function NavLinks({
 
 function SidebarInner({
   role,
-  email,
+  firstName,
+  photoUrl,
+  displayName,
   pathname,
   procurementNotifications = EMPTY_PROCUREMENT_NOTIFICATIONS,
   processingNotifications = EMPTY_PROCESSING_QUEUE_NOTIFICATIONS,
@@ -421,7 +446,9 @@ function SidebarInner({
   exportLotAssignmentNotifications = EMPTY_EXPORT_LOT_ASSIGNMENT_NOTIFICATIONS,
 }: {
   role: AppRole;
-  email?: string;
+  firstName: string;
+  photoUrl: string | null;
+  displayName: string;
   pathname: string;
   procurementNotifications?: ProcurementNotifications;
   processingNotifications?: ProcessingQueueNotifications;
@@ -438,7 +465,7 @@ function SidebarInner({
     <div data-layout="sidebar-inner">
       <div data-layout="sidebar-brand">
         <div data-layout="sidebar-brand-mark">
-          <div data-layout="sidebar-brand-icon">T</div>
+          <SidebarBrandIcon photoUrl={photoUrl} displayName={displayName} />
           <div>
             <p data-layout="sidebar-brand-title">Terrana ERP</p>
             <p data-layout="sidebar-brand-subtitle">Operations platform</p>
@@ -460,14 +487,16 @@ function SidebarInner({
           exportLotAssignmentNotifications={exportLotAssignmentNotifications}
         />
       </div>
-      <SidebarUser email={email} role={role} />
+      <SidebarUser firstName={firstName} role={role} />
     </div>
   );
 }
 
 export function AppSidebarDesktop({
   role,
-  email,
+  firstName,
+  photoUrl,
+  displayName,
   procurementNotifications = EMPTY_PROCUREMENT_NOTIFICATIONS,
   processingNotifications = EMPTY_PROCESSING_QUEUE_NOTIFICATIONS,
   paymentNotifications = EMPTY_PAYMENT_NOTIFICATIONS,
@@ -482,7 +511,9 @@ export function AppSidebarDesktop({
   return (
     <SidebarInner
       role={role}
-      email={email}
+      firstName={firstName}
+      photoUrl={photoUrl}
+      displayName={displayName}
       pathname={pathname}
       procurementNotifications={procurementNotifications}
       processingNotifications={processingNotifications}
@@ -498,7 +529,9 @@ export function AppSidebarDesktop({
 
 export function AppSidebarMobile({
   role,
-  email,
+  firstName,
+  photoUrl,
+  displayName,
   procurementNotifications = EMPTY_PROCUREMENT_NOTIFICATIONS,
   processingNotifications = EMPTY_PROCESSING_QUEUE_NOTIFICATIONS,
   paymentNotifications = EMPTY_PAYMENT_NOTIFICATIONS,
@@ -538,7 +571,9 @@ export function AppSidebarMobile({
           <div className="h-full min-h-0" onClick={() => setOpen(false)}>
             <SidebarInner
               role={role}
-              email={email}
+              firstName={firstName}
+              photoUrl={photoUrl}
+              displayName={displayName}
               pathname={pathname}
               procurementNotifications={procurementNotifications}
               processingNotifications={processingNotifications}

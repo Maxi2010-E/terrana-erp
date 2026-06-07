@@ -43,8 +43,9 @@ export function canAccessModule(role: AppRole, module: AppModule): boolean {
     case "hr":
     case "users":
     case "reports":
-    case "settings":
       return role === "admin";
+    case "settings":
+      return true;
     case "suppliers":
       return role === "admin" || role === "logistics_manager";
     case "procurement":

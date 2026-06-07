@@ -64,3 +64,8 @@ export type EmployeeOption = {
   last_name: string;
   department: EmployeeDepartment;
 };
+
+/** Administrative employee with email on file — eligible for a login account. */
+export type UserEligibleEmployeeOption = EmployeeOption & {
+  email: string;
+};

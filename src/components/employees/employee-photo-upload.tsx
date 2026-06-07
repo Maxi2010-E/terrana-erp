@@ -46,6 +46,7 @@ export function EmployeePhotoUpload({
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadPending, startUploadTransition] = useTransition();
+  const [processingPhoto, setProcessingPhoto] = useState(false);
   const [uploadState, uploadFormAction, uploadActionPending] = useActionState(
     uploadAction,
     {},
@@ -107,26 +108,31 @@ export function EmployeePhotoUpload({
     }
 
     setUploadError(null);
+    setProcessingPhoto(true);
 
-    startUploadTransition(async () => {
-      try {
-        const processed = await processEmployeePhotoFile(file);
+    void processEmployeePhotoFile(file)
+      .then((processed) => {
         const formData = new FormData();
         formData.set("photo", processed);
-        uploadFormAction(formData);
-      } catch (error) {
+        setProcessingPhoto(false);
+        startUploadTransition(() => {
+          uploadFormAction(formData);
+        });
+      })
+      .catch((error) => {
+        setProcessingPhoto(false);
         setUploadError(
           error instanceof Error
             ? error.message
             : "Could not prepare photo for upload.",
         );
-      }
-    });
+      });
   }
 
   const error = uploadError ?? uploadState.error ?? removeState.error;
   const success = uploadState.success || removeState.success;
-  const pending = uploadPending || uploadActionPending || removePending;
+  const pending =
+    processingPhoto || uploadPending || uploadActionPending || removePending;
 
   return (
     <div className="space-y-4">
@@ -161,9 +167,11 @@ export function EmployeePhotoUpload({
               />
             </div>
             <Button type="submit" disabled={pending}>
-              {uploadPending || uploadActionPending
-                ? "Uploading…"
-                : "Upload photo"}
+              {processingPhoto
+                ? "Preparing photo…"
+                : uploadPending || uploadActionPending
+                  ? "Uploading…"
+                  : "Upload photo"}
             </Button>
           </form>
 

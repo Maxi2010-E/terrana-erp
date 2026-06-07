@@ -461,7 +461,7 @@ export async function completeBoardTask(taskId: string) {
 }
 
 export async function getFacilityGeofenceSettings(): Promise<FacilityGeofenceSettings> {
-  await requireRole(["super_admin", "admin"]);
+  await requireRole(["super_admin"]);
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -486,7 +486,7 @@ export async function getFacilityGeofenceSettings(): Promise<FacilityGeofenceSet
 }
 
 export async function updateFacilityGeofenceSettings(formData: FormData) {
-  await requireRole(["super_admin", "admin"]);
+  await requireRole(["super_admin"]);
 
   const geofenceEnabled = formData.get("geofence_enabled") === "on";
   const facilityName =

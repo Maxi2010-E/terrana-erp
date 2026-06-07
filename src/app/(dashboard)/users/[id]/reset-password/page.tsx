@@ -33,8 +33,7 @@ export default async function ResetUserPasswordPage({
             Reset password
           </h1>
           <p className="text-sm text-muted-foreground">
-            {user.username ?? user.email} ·{" "}
-            {ROLE_LABELS[user.role as AppRole] ?? user.role}
+            {user.email} · {ROLE_LABELS[user.role as AppRole] ?? user.role}
           </p>
         </div>
         <LinkButton variant="outline" href="/users">
