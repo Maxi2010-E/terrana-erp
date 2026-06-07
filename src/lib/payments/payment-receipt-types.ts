@@ -1,0 +1,25 @@
+export type PaymentReceiptData = {
+  companyName: string;
+  reference: string;
+  paymentReference: string;
+  paymentDate: string;
+  statusLabel: string;
+  amount: number;
+  paymentMethodLabel: string;
+  payoutAccountLabel: string | null;
+  supplierName: string;
+  supplierCode: string;
+  supplierAddress: string | null;
+  supplierPhone: string | null;
+  batchNumber: string;
+  batchNumberDisplay: string;
+  productType: string;
+  batchValue: number;
+  paidTotal: number;
+  outstanding: number;
+  recordedByName: string | null;
+  approvedByName: string | null;
+  approvedAtLabel: string | null;
+  notes: string | null;
+  generatedAtLabel: string;
+};

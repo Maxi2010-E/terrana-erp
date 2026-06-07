@@ -1,0 +1,11 @@
+/** Validates in-app redirect paths — blocks open redirects like `//evil.com`. */
+export function safeRedirectPath(
+  path: string | null | undefined,
+  fallback = "/dashboard",
+): string {
+  if (!path || !path.startsWith("/") || path.startsWith("//")) {
+    return fallback;
+  }
+
+  return path;
+}

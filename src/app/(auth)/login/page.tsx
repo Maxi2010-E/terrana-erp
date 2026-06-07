@@ -1,0 +1,36 @@
+import { LoginForm } from "@/components/auth/login-form";
+import { getGeofenceRequirement } from "@/lib/auth/record-login-session";
+import { createClient } from "@/lib/supabase/server";
+
+type LoginPageProps = {
+  searchParams: Promise<{ error?: string; message?: string; redirect?: string }>;
+};
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams;
+  const supabase = await createClient();
+  const geofenceRequirement = await getGeofenceRequirement(supabase);
+
+  const initialError =
+    params.error === "account_disabled"
+      ? "Your account has been disabled. Contact an administrator."
+      : params.error === "auth_callback_failed"
+        ? "Authentication failed. Please try again."
+        : params.error === "profile_missing"
+          ? "Your user profile is not set up. Contact an administrator."
+          : null;
+
+  const initialMessage =
+    params.message === "password_updated"
+      ? "Password updated. Sign in with your new password."
+      : null;
+
+  return (
+    <LoginForm
+      initialError={initialError}
+      initialMessage={initialMessage}
+      redirectTo={params.redirect ?? "/dashboard"}
+      geofenceRequirement={geofenceRequirement}
+    />
+  );
+}

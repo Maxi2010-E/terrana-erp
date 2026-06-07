@@ -1,0 +1,63 @@
+---
+description: Module completion gate — speed, debug, and consumer-grade UX bar
+alwaysApply: true
+---
+
+# Module quality gate (Terrana ERP)
+
+No module is **done** until it passes speed, accuracy, and debug checks. Benchmark against **consumer-grade apps** (Spotify, Apple Music, banking apps): instant feedback, no silent failures, fast data on screen.
+
+## Definition of done (every module)
+
+Before marking a module or feature complete:
+
+1. **Build** — `npm run build` passes with no errors.
+2. **Happy path** — primary user flow works end-to-end (manual test).
+3. **Failure path** — wrong input, empty states, and errors show clear messages (never blank screens or stuck spinners).
+4. **Speed** — measure and fix before shipping (see targets below).
+5. **Regression** — auth, navigation, and role access still work after changes.
+
+Report timings in PR/commit notes when touching a module (e.g. “login 0.8s, employee list 420ms”).
+
+## Speed targets (perceived UX)
+
+| Flow | Target | How to check |
+|------|--------|--------------|
+| Login → dashboard interactive | **< 1.5s** (goal < 1s) | DevTools Network + terminal `proxy.ts` ms |
+| Protected page navigation | **< 500ms** middleware | Terminal request timing |
+| List page (25 rows) | **< 800ms** total TTFB + render | Network tab, no N+1 in terminal |
+| Search / filter | **< 500ms** after debounce | Type and measure response |
+| Form submit (create/update) | **< 1s** + clear success/error | No double-submit, no hung button |
+
+If a target is missed, fix or document why before moving to the next module.
+
+## Performance rules (non-negotiable)
+
+- **One auth read per request** — use `getSessionUser()` cache; no duplicate `getUser()` in middleware + layout + page.
+- **Fast middleware** — no remote Supabase calls on public routes (`/login`, `/auth`); no DB queries in middleware.
+- **No redirect bugs** — never swallow Next.js `redirect()` in client `catch`; use `window.location.replace` or form actions correctly.
+- **Paginate everything** — default 25 rows; never load full tables.
+- **Parallel queries** — `Promise.all` for independent data; no layout waterfalls.
+- **Failed actions recover instantly** — preserve user input, show error, re-enable button (login is the reference pattern).
+
+## Debug standards
+
+- Errors must be **visible** (`role="alert"`, destructive styling) — not console-only.
+- Buttons must not stay disabled after failure.
+- After auth success, user must land on the target page **without manual refresh**.
+- Log slow requests in dev (> 500ms middleware or > 1s page) and fix root cause before shipping.
+
+## Module test checklist (copy per phase)
+
+```
+[ ] Happy path works
+[ ] Error states tested (bad input, unauthorized, empty list)
+[ ] Speed: login / list / submit within targets
+[ ] No duplicate Supabase calls per navigation
+[ ] Role-based access verified
+[ ] npm run build passes
+```
+
+## When building the next module
+
+Ask: *Would this feel acceptable in Spotify or Apple Music?* — if the user waits, sees a flash, or must refresh, it is not done.

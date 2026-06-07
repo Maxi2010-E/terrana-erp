@@ -1,0 +1,39 @@
+---
+description: App code performance standards for Terrana ERP
+alwaysApply: true
+---
+
+# Code efficiency (Terrana ERP)
+
+Optimize for speed as modules grow. Prefer simple, measurable patterns over premature abstraction.
+
+## Data fetching (Next.js + Supabase)
+
+- Default list pages to **25 rows** with server-side pagination (`range` / `limit` + `offset` or cursor).
+- Fetch only columns needed — never `select('*')` on large tables.
+- Use **Server Components** for initial data; reserve `"use client"` for interactivity only.
+- Parallelize independent queries with `Promise.all`; avoid sequential waterfalls in layouts.
+- Cache stable reads with `unstable_cache` or route segment config where data is not user-specific.
+
+## React & UI
+
+- Keep client components small; lift data fetching to server when possible.
+- Memoize only when profiling shows a problem — don't blanket `useMemo`/`useCallback`.
+- Virtualize long lists (100+ rows) instead of rendering full tables.
+- Debounce search/filter inputs (~300ms); don't query on every keystroke.
+
+## Bundle & assets
+
+- Dynamic-import heavy charts, PDF, or export libraries.
+- Use `next/image` for photos; avoid large unoptimized assets in `public/`.
+
+## Anti-patterns (avoid)
+
+- Loading entire tables into memory for client-side filter/sort.
+- N+1 queries (loop of Supabase calls — batch or join instead).
+- Polling when Supabase realtime or revalidate-on-action is enough.
+- Duplicating business logic in client and server — keep calculations server-side.
+
+## When adding a feature
+
+Ask: *Will this still be fast at 10× data?* If not, paginate, index (DB), or defer loading.
