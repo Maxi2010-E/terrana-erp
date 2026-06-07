@@ -67,17 +67,22 @@ export async function createAppUser(
     };
   }
 
-  const { data: existingUser } = await supabase
+  const admin = createAdminClient();
+
+  const { data: existingUser, error: existingUserError } = await admin
     .from("users")
     .select("id")
     .eq("employee_id", employeeId)
     .maybeSingle();
 
+  if (existingUserError) {
+    return { error: existingUserError.message };
+  }
+
   if (existingUser) {
     return { error: "This employee already has a user account." };
   }
 
-  const admin = createAdminClient();
   const { data: authData, error: authError } =
     await admin.auth.admin.createUser({
       email,

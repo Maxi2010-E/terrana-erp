@@ -7,9 +7,6 @@ Supabase prod project: **Terrana Africa Erp-Prod**
 
 ## Release: UX — settings, profiles, user creation, change password
 
-**Git commit:** `40b688a` — `UX: settings hub, profile names/photos, user creation, change password`  
-**Branch:** `main`
-
 ### Summary
 
 | Area | Change |
@@ -22,7 +19,7 @@ Supabase prod project: **Terrana Africa Erp-Prod**
 | Users | Username column removed; super admin accounts protected from admin actions |
 | Geofence | Super admin only (`/settings/geofence`) |
 | Photos | Upload `useActionState` transition fix |
-| DB | Migration `00054_employee_self_read.sql` |
+| DB | Migrations `00054_employee_self_read.sql`, `00055_users_table_grants.sql` |
 
 ### Files (26 changed)
 
@@ -49,6 +46,10 @@ Run in **SQL Editor** (or `supabase db push` linked to prod):
 `supabase/migrations/00054_employee_self_read.sql`
 
 Allows each user to read their own employee row for header name and sidebar photo.
+
+`supabase/migrations/00055_users_table_grants.sql`
+
+Fixes **permission denied for table users** when creating users or loading the Users list (prod without auto-expose grants).
 
 ### 3. Smoke test (production)
 
