@@ -1,7 +1,5 @@
 "use server";
 
-import { unstable_cache } from "next/cache";
-
 import { getPaymentNotifications } from "@/lib/actions/payments";
 import { createMemoryTtlCache } from "@/lib/cache/memory-ttl-cache";
 import {
@@ -561,17 +559,7 @@ export async function getDashboardOverview(): Promise<DashboardOverview> {
     return cached;
   }
 
-  const value =
-    process.env.NODE_ENV === "production"
-      ? await unstable_cache(
-          () => loadDashboardOverview(role),
-          ["dashboard-overview", userId, role],
-          {
-            revalidate: DASHBOARD_CACHE_SECONDS,
-            tags: [`dashboard-overview-${userId}`],
-          },
-        )()
-      : await loadDashboardOverview(role);
+  const value = await loadDashboardOverview(role);
 
   dashboardOverviewCache.set(cacheKey, value);
   return value;
@@ -587,17 +575,7 @@ export async function getDashboardTrends(): Promise<DashboardTrends> {
     return cached;
   }
 
-  const value =
-    process.env.NODE_ENV === "production"
-      ? await unstable_cache(
-          () => loadDashboardTrends(role),
-          ["dashboard-trends", userId, role],
-          {
-            revalidate: DASHBOARD_CACHE_SECONDS,
-            tags: [`dashboard-trends-${userId}`],
-          },
-        )()
-      : await loadDashboardTrends(role);
+  const value = await loadDashboardTrends(role);
 
   dashboardTrendsCache.set(cacheKey, value);
   return value;
