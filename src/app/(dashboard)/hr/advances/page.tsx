@@ -1,5 +1,12 @@
-import { ModulePlaceholder } from "@/components/layout/module-placeholder";
+import { redirect } from "next/navigation";
 
-export default function Page() {
-  return <ModulePlaceholder title="Advances" phase={1} />;
+import { buildHrHubRedirect } from "@/lib/hr/redirect";
+
+type AdvancesRedirectProps = {
+  searchParams: Promise<{ q?: string }>;
+};
+
+export default async function AdvancesPage({ searchParams }: AdvancesRedirectProps) {
+  const params = await searchParams;
+  redirect(buildHrHubRedirect("advances", { q: params.q }));
 }

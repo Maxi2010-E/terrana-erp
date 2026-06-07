@@ -3,13 +3,6 @@
  * Run: node scripts/preview-graded-product-names.mjs
  */
 
-const SINGLES = [
-  "Clean New Red",
-  "Clean New Black",
-  "Clean Old Red",
-  "Clean Old Black",
-];
-
 function parseSingle(label) {
   const match = /^Clean (New|Old) (Red|Black)$/.exec(label);
   if (!match) return null;

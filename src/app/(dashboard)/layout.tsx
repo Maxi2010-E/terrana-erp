@@ -1,9 +1,12 @@
 import { redirect } from "next/navigation";
 
 import { AppHeader } from "@/components/layout/app-header";
-import { AppSidebar } from "@/components/layout/app-sidebar";
-import { getProcessingQueueNotifications } from "@/lib/actions/processing";
-import { getProcurementNotifications } from "@/lib/actions/procurement";
+import { DashboardShell } from "@/components/layout/dashboard-shell";
+import {
+  DashboardMobileNavLoader,
+  DashboardSidebarLoader,
+} from "@/components/layout/dashboard-sidebar-loader";
+import { PayrollDueBannerSlot } from "@/components/layout/payroll-due-banner-slot";
 import { getSessionUser } from "@/lib/auth/get-session";
 import type { AppRole } from "@/lib/roles";
 
@@ -23,23 +26,28 @@ export default async function DashboardLayout({
   }
 
   const role: AppRole = appUser.role;
-  const procurementNotifications = await getProcurementNotifications();
-  const processingNotifications = await getProcessingQueueNotifications();
+  const loaderProps = {
+    userId: appUser.id,
+    role,
+    email: authUser.email,
+  };
+
+  const [sidebar, mobileNav, payrollBanner] = await Promise.all([
+    DashboardSidebarLoader(loaderProps),
+    DashboardMobileNavLoader(loaderProps),
+    PayrollDueBannerSlot({ role }),
+  ]);
 
   return (
-    <div className="flex min-h-full flex-col md:flex-row">
-      <AppSidebar
-        role={role}
-        email={authUser.email}
-        procurementNotifications={procurementNotifications}
-        processingNotifications={processingNotifications}
-      />
-      <div className="flex min-h-full flex-1 flex-col">
-        <AppHeader />
-        <main className="flex-1 overflow-auto bg-background p-4 lg:p-8">
-          {children}
-        </main>
-      </div>
-    </div>
+    <DashboardShell sidebar={sidebar} mobileNav={mobileNav}>
+      <AppHeader />
+      {payrollBanner}
+      <main
+        data-layout="dashboard-page-scroll"
+        className="p-4 lg:p-8"
+      >
+        {children}
+      </main>
+    </DashboardShell>
   );
 }

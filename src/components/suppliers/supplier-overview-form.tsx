@@ -15,26 +15,28 @@ type SupplierOverviewFormProps = {
     formData: FormData,
   ) => Promise<SupplierFormState>;
   supplier: Supplier;
-  readOnly?: boolean;
+  onCancel?: () => void;
+  onSaved?: () => void;
 };
 
 export function SupplierOverviewForm({
   action,
   supplier,
-  readOnly = false,
+  onCancel,
+  onSaved,
 }: SupplierOverviewFormProps) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(action, {});
 
   useEffect(() => {
     if (state.success) {
-      router.push("/suppliers?message=updated");
       router.refresh();
+      onSaved?.();
     }
-  }, [state.success, router]);
+  }, [state.success, router, onSaved]);
 
   return (
-    <form action={readOnly ? undefined : formAction} className="space-y-4">
+    <form action={formAction} className="space-y-4">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="supplier_code">Supplier ID</Label>
@@ -61,7 +63,6 @@ export function SupplierOverviewForm({
             name="supplier_name"
             required
             defaultValue={supplier.supplier_name}
-            disabled={readOnly}
           />
         </div>
         <div className="space-y-2">
@@ -70,7 +71,6 @@ export function SupplierOverviewForm({
             id="phone"
             name="phone"
             defaultValue={supplier.phone ?? ""}
-            disabled={readOnly}
           />
         </div>
         <div className="space-y-2">
@@ -80,7 +80,6 @@ export function SupplierOverviewForm({
             name="email"
             type="email"
             defaultValue={supplier.email ?? ""}
-            disabled={readOnly}
           />
         </div>
         <div className="space-y-2 md:col-span-2">
@@ -89,7 +88,6 @@ export function SupplierOverviewForm({
             id="address"
             name="address"
             defaultValue={supplier.address ?? ""}
-            disabled={readOnly}
           />
         </div>
         <div className="space-y-2 md:col-span-2">
@@ -98,7 +96,6 @@ export function SupplierOverviewForm({
             id="notes"
             name="notes"
             defaultValue={supplier.notes ?? ""}
-            disabled={readOnly}
           />
         </div>
       </div>
@@ -114,15 +111,20 @@ export function SupplierOverviewForm({
 
       {state.success ? (
         <p className="text-sm text-emerald-700" role="status">
-          Saving… returning to list
+          Supplier updated.
         </p>
       ) : null}
 
-      {!readOnly ? (
+      <div className="flex flex-wrap gap-2">
+        {onCancel ? (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        ) : null}
         <Button type="submit" disabled={pending}>
           {pending ? "Saving…" : "Save changes"}
         </Button>
-      ) : null}
+      </div>
     </form>
   );
 }

@@ -7,11 +7,22 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:procurement": "node scripts/test-procurement-logic.mjs",
-    "test:processing": "node scripts/test-processing-logic.mjs",
+    "test:procurement": "tsx scripts/test-procurement-logic.mjs",
+    "test:procurement-urgency": "tsx scripts/test-procurement-approval-urgency.mjs",
+    "test:processing": "tsx scripts/test-processing-logic.mjs",
     "test:inventory": "node scripts/test-graded-product-type.mjs",
     "test:grading-variance": "node scripts/test-grading-variance.mjs",
-    "test:logic": "npm run test:procurement && npm run test:processing && npm run test:inventory && npm run test:grading-variance"
+    "test:health": "node scripts/health-audit.mjs",
+    "test:links": "node scripts/test-links-routes.mjs",
+    "test:rbac": "tsx scripts/test-rbac-privileges.mjs",
+    "test:role-tabs": "tsx scripts/test-role-tabs.mjs",
+    "test:routes-speed": "node scripts/benchmark-routes.mjs",
+    "test:last-login": "node scripts/test-last-login.mjs",
+    "test:payroll": "tsx scripts/test-payroll-logic.mjs",
+    "test:layout": "node scripts/test-dashboard-layout.mjs",
+    "test:expenses": "tsx scripts/test-expenses-logic.mjs",
+    "audit:migrations": "node scripts/audit-migrations.mjs",
+    "test:logic": "npm run test:inventory && npm run test:grading-variance && npm run test:procurement && npm run test:processing && npm run test:expenses"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -21,6 +32,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^1.17.0",
     "next": "16.2.6",
+    "pdfkit": "^0.18.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "shadcn": "^4.9.0",
@@ -30,11 +42,13 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pdfkit": "^0.17.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
+    "tsx": "^4.22.4",
     "typescript": "^5"
   }
 }

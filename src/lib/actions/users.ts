@@ -23,7 +23,7 @@ export async function createAppUser(
   const username = String(formData.get("username") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const role = String(formData.get("role") ?? "accounts") as AppRole;
+  const role = String(formData.get("role") ?? "warehouse_manager") as AppRole;
 
   if (!employeeId || !username || !email || !password) {
     return { error: "Employee, username, email, and password are required." };

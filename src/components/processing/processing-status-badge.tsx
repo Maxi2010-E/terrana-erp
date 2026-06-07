@@ -18,6 +18,12 @@ const STATUS_STYLES: Record<
       color: notificationColors.urgent.background,
     },
   },
+  pending_second_approval: {
+    className: "border-amber-200 bg-amber-50 text-amber-900",
+  },
+  pending_admin_approval: {
+    className: "border-orange-200 bg-orange-50 text-orange-900",
+  },
   in_progress: {
     className: "border-sky-200 bg-sky-50 text-sky-900",
   },

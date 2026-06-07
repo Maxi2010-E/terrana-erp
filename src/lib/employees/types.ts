@@ -21,6 +21,10 @@ export type Employee = {
   guarantor_name: string | null;
   guarantor_phone: string | null;
   guarantor_address: string | null;
+  photo_url: string | null;
+  cv_url: string | null;
+  employment_letter_url: string | null;
+  id_document_url: string | null;
   created_at: string;
   updated_at: string;
 };

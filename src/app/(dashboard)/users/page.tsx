@@ -1,8 +1,9 @@
 import { UserStatusBadge } from "@/components/employees/status-badge";
+import { PageHeader } from "@/components/layout/page-header";
 import { UserRoleSelect } from "@/components/users/user-role-select";
 import { LinkButton } from "@/components/ui/link-button";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { PaginationBar } from "@/components/ui/pagination-bar";
 import { getUsersList, updateUserStatus } from "@/lib/actions/users";
 import { requireHrAdmin } from "@/lib/auth/require-role";
@@ -23,6 +24,20 @@ function formatDateTime(value: string | null) {
   }).format(new Date(value));
 }
 
+function recordLabel(total: number): string {
+  if (total === 0) {
+    return "No users yet";
+  }
+  if (total === 1) {
+    return "1 user";
+  }
+  return `${total.toLocaleString()} users`;
+}
+
+const HEAD_CELL =
+  "px-4 pb-3 pt-1 text-left text-xs font-medium tracking-wide uppercase";
+const BODY_CELL = "px-4 py-4 align-middle leading-normal";
+
 export default async function UsersPage({ searchParams }: UsersPageProps) {
   const { role: currentRole, authUser } = await requireHrAdmin();
   const canManageRoles = currentRole === "super_admin";
@@ -41,43 +56,39 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Users</h1>
-          <p className="text-sm text-muted-foreground">
-            System access accounts — each user must link to an employee.
-          </p>
-        </div>
-        <LinkButton href="/users/new">Create user</LinkButton>
-      </div>
+      <PageHeader
+        title="Users"
+        description="System access accounts — each user must link to an employee."
+        meta={recordLabel(total)}
+        actions={<LinkButton href="/users/new">Create user</LinkButton>}
+      />
 
-      <Card>
-        <CardHeader className="gap-4 pb-4">
-          <CardTitle className="text-base">User list</CardTitle>
+      <Card className="rounded-2xl shadow-sm">
+        <CardHeader className="gap-4 border-b border-border/60 pb-4">
           <form className="flex max-w-md gap-2" method="get">
             <input
               name="q"
               defaultValue={query}
               placeholder="Search by email, username, role…"
-              className="flex h-8 flex-1 rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="flex h-10 flex-1 rounded-xl border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             />
-            <Button type="submit" variant="outline" size="sm">
+            <Button type="submit" variant="outline">
               Search
             </Button>
           </form>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5 px-4 pb-6 pt-5">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[820px] text-left text-sm">
+            <table className="w-full min-w-[820px] border-collapse text-left text-sm">
               <thead>
-                <tr className="border-b text-muted-foreground">
-                  <th className="pb-3 pr-4 font-medium">Username</th>
-                  <th className="pb-3 pr-4 font-medium">Employee</th>
-                  <th className="pb-3 pr-4 font-medium">Email</th>
-                  <th className="pb-3 pr-4 font-medium">Role</th>
-                  <th className="pb-3 pr-4 font-medium">Status</th>
-                  <th className="pb-3 pr-4 font-medium">Last login</th>
-                  <th className="pb-3 font-medium">Actions</th>
+                <tr className="border-b border-border/60 text-muted-foreground">
+                  <th className={HEAD_CELL}>Username</th>
+                  <th className={HEAD_CELL}>Employee</th>
+                  <th className={HEAD_CELL}>Email</th>
+                  <th className={HEAD_CELL}>Role</th>
+                  <th className={HEAD_CELL}>Status</th>
+                  <th className={HEAD_CELL}>Last login</th>
+                  <th className={HEAD_CELL}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -85,7 +96,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                   <tr>
                     <td
                       colSpan={7}
-                      className="py-8 text-center text-muted-foreground"
+                      className="px-4 py-12 text-center text-muted-foreground"
                     >
                       No users found.
                     </td>
@@ -100,17 +111,20 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                     const isSuperAdmin = user.role === "super_admin";
 
                     return (
-                      <tr key={user.id} className="border-b last:border-0">
-                        <td className="py-3 pr-4 font-medium">
+                      <tr
+                        key={user.id}
+                        className="border-b border-border/50 last:border-0"
+                      >
+                        <td className={`${BODY_CELL} font-medium`}>
                           {user.username ?? "—"}
                         </td>
-                        <td className="py-3 pr-4">
+                        <td className={BODY_CELL}>
                           {employee
                             ? `${employee.employee_code} — ${employee.first_name} ${employee.last_name}`
                             : "—"}
                         </td>
-                        <td className="py-3 pr-4">{user.email}</td>
-                        <td className="py-3 pr-4">
+                        <td className={BODY_CELL}>{user.email}</td>
+                        <td className={BODY_CELL}>
                           {canManageRoles && user.id !== authUser?.id ? (
                             <UserRoleSelect
                               userId={user.id}
@@ -120,13 +134,13 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                             ROLE_LABELS[user.role as AppRole] ?? user.role
                           )}
                         </td>
-                        <td className="py-3 pr-4">
+                        <td className={BODY_CELL}>
                           <UserStatusBadge status={user.status} />
                         </td>
-                        <td className="py-3 pr-4">
+                        <td className={BODY_CELL}>
                           {formatDateTime(user.last_login)}
                         </td>
-                        <td className="py-3">
+                        <td className={BODY_CELL}>
                           {isSuperAdmin ? (
                             canResetSuperAdmin ? (
                               <LinkButton

@@ -36,7 +36,7 @@ Ensure `.env.local` includes `SUPABASE_SECRET_KEY` (needed to create user accoun
 Run in SQL Editor if not already done:
 
 - [`00003_employee_code_trigger.sql`](supabase/migrations/00003_employee_code_trigger.sql) — auto employee IDs
-- [`00004_users_update_own.sql`](supabase/migrations/00004_users_update_own.sql) — superseded by 00005 if you run that next
+- [`00004_users_update_own.sql`](supabase/migrations/00004_users_update_own.sql) — **deprecated**; skip on fresh DB — use `00005` instead
 - [`00005_users_last_login_only.sql`](supabase/migrations/00005_users_last_login_only.sql) — **required** — blocks users from changing their own role/status
 
 ### Step 4 — Test Phase 1
@@ -307,8 +307,308 @@ Use **admin**, **inventory_manager**, or **super_admin**.
 
 ---
 
-## Next phase
+## Phase 6 — Payments (supplier payment queue and records)
 
-**Phase 6 — Payments**: supplier payment queue and records.
+### Step 1 — Run migration in Supabase
 
-Say **"Start Phase 6"** when Phase 5 tests pass.
+Run in **Supabase Dashboard → SQL Editor**, after Phase 5 migrations:
+
+1. `supabase/migrations/00021_phase6_payments.sql`
+2. `supabase/migrations/00022_payment_bank_account.sql`
+3. `supabase/migrations/00024_resolve_user_display_names.sql`
+
+(`00023_resolve_user_emails.sql` was removed — `00024` replaces it.)
+
+This creates `supplier_payments`, payment reference generator (`PAY-2026-000001`), overpayment validation, automatic batch `payment_status` rollup, and links transfer payments to a supplier bank account.
+
+### Step 2 — Restart the dev server
+
+```bash
+npm run dev
+```
+
+### Step 3 — Test Phase 6
+
+Use **accounts** to record payments and **admin** / **super_admin** to approve.
+
+**Record payment**
+- [ ] **Payments → Record payment** — only suppliers with outstanding approved batches appear
+- [ ] Select batch → batch value, paid so far, and outstanding display correctly
+- [ ] Enter amount + method (Cash / Transfer) → saves as **Pending approval**
+- [ ] **Transfer** requires selecting a supplier bank account (defaults to primary)
+- [ ] **Cash** does not ask for a bank account
+- [ ] Supplier with no bank accounts cannot record a transfer (link to supplier profile shown)
+- [ ] Overpayment attempt is rejected (amount greater than outstanding)
+
+**Approve payment**
+- [ ] Admin opens a pending **transfer** payment → confirms or changes payout bank account → **Approve payment**
+- [ ] Approved transfer shows payout bank account on detail and in payment history
+- [ ] Batch `payment_status` updates: unpaid → partially paid → paid when balance reaches zero
+- [ ] Partial payments show in **Partially paid** queue; fully paid batches move to **Completed**
+
+**Queues & history**
+- [ ] Dashboard cards show Outstanding / Partial / Completed counts
+- [ ] Payment queue filters work; search works on batch number / product
+- [ ] Payment history lists reference, supplier, batch, amount, date, method, payout account (transfers), approver
+
+**Supplier integration**
+- [ ] **Suppliers** list **Outstanding** column shows total unpaid balance per supplier
+- [ ] Supplier detail **Payments** tab shows payment history for that supplier
+
+**Roles**
+- [ ] **accounts** can record but not approve
+- [ ] **inventory_manager** cannot access `/payments`
+- [ ] **super_admin** can unlock an approved payment (returns to pending approval)
+
+**Regression**
+- [ ] Phases 0–5 still work (procurement, processing, inventory)
+
+---
+
+## Phase 7 — Expenses (manual QA)
+
+Run migration **`00026_phase7_expenses.sql`** in Supabase SQL Editor (after `00024` and `00025` if not applied).
+
+**Petty cash**
+- [ ] Admin can **Add petty cash** on Daily Expenses page
+- [ ] Balance card shows current petty cash balance and recent top-ups
+- [ ] Accounts cannot add petty cash top-ups
+
+**Daily expenses**
+- [ ] Accounts can **Add expense** with category, description, amount, method, date, notes
+- [ ] New daily expense saves as **Pending approval**
+- [ ] Admin sees urgent banner when daily expenses await approval
+- [ ] Admin **Approve** on a cash expense reduces petty cash balance
+- [ ] Approving a cash expense that exceeds balance is rejected
+- [ ] Transfer daily expenses do not affect petty cash balance
+
+**Operational expenses**
+- [ ] Create operational expense with type-driven linked record dropdown
+- [ ] Cleaning / field transfer out link to processing sessions
+- [ ] Grading links to inventory batches
+- [ ] Truck offloading links to off-site procurement only
+- [ ] Field transfer in links to pre-stock records (bags auto-fill from pre-stock received)
+- [ ] Field transfer in dashboard card shows **to record** (amber) and **pending approval** (red badge) counts
+- [ ] Miscellaneous allows entry without a linked record
+- [ ] Warehouse loading appears disabled with “Available after Logistics module”
+- [ ] Bags × rate per bag auto-calculates total; admin can approve
+
+**Roles & navigation**
+- [ ] **accounts** can record but not approve expenses
+- [ ] **inventory_manager** cannot access `/expenses/*`
+- [ ] Sidebar badges show pending counts on Daily and Operational nav items
+
+**Regression**
+- [ ] Phases 0–6 still work (payments, procurement, processing, inventory)
+
+### Deferred — revisit after Phase 8 or 9
+
+**Field transfer in + waste (not in Phase 7)**
+
+Processing waste (broken flowers, etc.) will eventually be transferred back into the warehouse and should count toward **field transfer in** operational costs — same per-bag labor model as pre-stock intake. That requires a **Waste management** module/tab (log of waste bags eligible for warehouse transfer).
+
+Until then:
+
+- Field transfer in links **only** to **pre-stock** records (`bags_received` auto-fill).
+- Do **not** include processing `waste_records` in the field transfer in dropdown, notifications, or bag counts.
+- When waste management ships, extend field transfer in to link waste transfer events and auto-fill bag counts from that log.
+
+---
+
+## Phase 8 — Logistics (manual QA)
+
+Run migrations in Supabase SQL Editor (in order):
+
+1. `supabase/migrations/00034_phase8_logistics.sql`
+2. `supabase/migrations/00035_operational_expense_shipment_unique.sql`
+
+**Customers**
+- [ ] Create customer → auto `CUS-2026-000001` ID
+- [ ] List search by name, ID, country
+- [ ] Detail: edit overview, deactivate/activate (no delete)
+- [ ] Fumigation requirement saved correctly
+
+**Fumigation chambers**
+- [ ] Create / edit facility with registration number
+- [ ] List search works
+
+**Truck agents**
+- [ ] Create / edit agent
+- [ ] List search works
+
+**Shipments**
+- [ ] Dashboard cards show loaded / in transit / delivered counts
+- [ ] Create shipment: customer + inventory selection + container/seal required
+- [ ] Selected inventory moves to **allocated** status
+- [ ] Detail shows inventory traceability links
+- [ ] Advance status: loaded → in transit → delivered
+- [ ] Delivered shipment marks inventory **shipped**
+
+**Warehouse loading expense (Phase 7 integration)**
+- [ ] Operational expense **Warehouse loading** enabled in form
+- [ ] Links to loaded/in-transit shipments without existing expense
+- [ ] Bags auto-fill from shipment inventory total
+- [ ] Duplicate warehouse loading per shipment rejected
+
+**Roles**
+- [ ] **logistics_manager** can access all `/logistics/*` routes
+- [ ] **accounts** cannot access `/logistics/*` but can record warehouse loading expense
+- [ ] **inventory_manager** cannot access logistics or expenses
+
+**Regression**
+- [ ] Phases 0–7 still work
+
+### Deferred — Phase 8 follow-up
+
+- Shipment document uploads (photos, videos, certificates)
+- Warehouse loading “to record” notification queue on dashboard cards
+
+---
+
+## Phase 9 — Dashboards (manual QA)
+
+Run migration **`00036_phase9_dashboard_metrics.sql`** in Supabase SQL Editor (after `00035`).
+
+PostgREST aggregate selects (`.sum()`) are disabled by default on Supabase — KPI totals use the `get_dashboard_kpi_metrics` RPC instead.
+
+**Dashboard (`/dashboard`)**
+- [ ] **super_admin / admin** see all 8 KPI cards with live values
+- [ ] **accounts** sees procurement, suppliers, payments, monthly expenses/value
+- [ ] **inventory_manager** sees current inventory + procurement KG
+- [ ] **logistics_manager** sees containers in transit + monthly shipments
+- [ ] KPI cards link to the correct module pages
+- [ ] Recent activity preview shows for admin roles with links to detail pages
+- [ ] Second navigation within 30s feels instant (cache)
+
+**Reports (`/reports`) — admin only**
+- [ ] Procurement, inventory, expense, and shipment trend charts render (6 months)
+- [ ] Recent activity tables: procurements, payments, shipments, expenses
+- [ ] Non-admin roles redirected away from `/reports`
+
+**Regression**
+- [ ] Phases 0–8 still work
+- [ ] Sidebar notification cache still performs under 1s navigation target
+
+### Phase 9 grade card
+
+| Area | Grade | Notes |
+|------|-------|-------|
+| UX | Match | Role-aware KPIs, bar trends, recent activity |
+| Data model | Match | Aggregates on existing indexed columns |
+| Speed | Match | 30s memory + unstable_cache; no full-table scans for KPIs |
+| Security | Match | RLS on all underlying tables; reports admin-only |
+
+---
+
+## Office — Attendance, Company Board, Geofence
+
+Run in Supabase SQL Editor (in order):
+
+1. [`00037_office_board.sql`](supabase/migrations/00037_office_board.sql) — general board, private messages, daily tasks
+2. [`00038_attendance_geofence.sql`](supabase/migrations/00038_attendance_geofence.sql) — facility geofence + `record_login_attendance` RPC
+
+### Configure facility geofence
+
+1. **Settings** → Facility geofence
+2. Enter latitude/longitude (Google Maps → right-click → copy coordinates)
+3. Set radius (default 200m)
+4. Enable **Require on-site location for valid attendance**
+
+Until geofence is enabled, login works without location (attendance still recorded).
+
+### Test Office
+
+- [ ] **Office → Attendance** (admin): all active users; **Present** only after valid on-site login
+- [ ] **Office → Company board → General**: any user can read/post; admin can remove posts
+- [ ] **Office → Private**: message another user; only they see the thread
+- [ ] **Office → Tasks**: admin adds task; stays open until checked off (carries to next day)
+- [ ] Login outside geofence (when enabled): blocked with clear error
+- [ ] Login at facility: succeeds; roster shows **Present**
+
+---
+
+## HR Payroll (leave, advances, bonuses)
+
+Run [`00039_hr_payroll.sql`](supabase/migrations/00039_hr_payroll.sql) in Supabase SQL Editor.
+
+### Net pay formula (per employee, per month)
+
+```
+daily_rate = monthly_salary ÷ working_days_in_month (Mon–Fri only)
+leave_deduction = daily_rate × unpaid_leave_weekdays
+gross_pay = monthly_salary − leave_deduction + approved_bonuses
+advance_deduction = min(outstanding_advances, gross_pay)
+net_pay = gross_pay − advance_deduction   (minimum 0)
+```
+
+- **Paid leave** — no salary deduction
+- **Unpaid leave** — deducts pro-rata for weekdays overlapping the pay month
+- **Advances** — approved advances with balance remaining; deducted on finalize
+- **Bonuses** — approved bonuses tagged to the pay month
+
+### Test checklist
+
+- [ ] `npm run test:payroll` passes
+- [ ] Record unpaid leave → payroll preview shows deduction
+- [ ] Record paid leave → no deduction
+- [ ] Approve advance → deducted on payroll finalize
+- [ ] Approve bonus → added to net pay
+- [ ] Accounts role can open payroll; admin can finalize
+
+---
+
+## Production migrations (full list)
+
+Before deploying to a **new** Supabase project, run migrations manually in **SQL Editor** — one file per query unless noted.
+
+```bash
+npm run audit:migrations
+```
+
+That prints the authoritative run order, skip list, and split pairs.
+
+### Do not run
+
+| File | Reason |
+|------|--------|
+| ~~`00040_expense_payment_made.sql`~~ | Removed — was a comment-only stub |
+
+### Skip on fresh database (run replacement)
+
+| Skip | Use instead |
+|------|-------------|
+| `00004_users_update_own.sql` | `00005_users_last_login_only.sql` |
+
+### Two-step runs (wait for success between)
+
+| Step 1 | Step 2 |
+|--------|--------|
+| `00013_processing_session_approval.sql` | `00014_processing_session_approval_apply.sql` |
+| `00040_expense_payment_made_enum.sql` | `00041_expense_payment_made_apply.sql` |
+| `00049_rbac_enum_values.sql` | `00050_rbac_and_dual_approval_apply.sql` |
+
+### After Phase 9 (00036–00039)
+
+Run in order:
+
+1. `00037_office_board.sql`
+2. `00038_attendance_geofence.sql`
+3. `00039_hr_payroll.sql`
+4. `00040_hr_payroll_individual.sql`
+5. `00040_expense_payment_made_enum.sql` then `00041_expense_payment_made_apply.sql` (split)
+6. `00042_pre_stock_depleted_kg.sql` through `00048_waste_reprocessing.sql`
+7. `00049_rbac_enum_values.sql` then `00050_rbac_and_dual_approval_apply.sql` (split)
+8. `00052_procurement_cash_confirmation.sql`
+9. `00053_cash_manager_processing_read.sql`
+
+Note: two files share the `00040_` prefix (`hr_payroll_individual` and `expense_payment_made_enum`) — the old combined stub was removed.
+
+---
+
+## Next (post Phase 9)
+
+Per architecture doc — only after Phase 9 ships:
+
+- Audit logs
+- SOP management
+- CAPA / quality / ISO compliance layer

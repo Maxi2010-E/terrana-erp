@@ -3,6 +3,7 @@ import { ProcurementListTable } from "@/components/procurement/procurement-list-
 import { ProcurementLoadToggle } from "@/components/procurement/procurement-load-toggle";
 import { PageHeader } from "@/components/layout/page-header";
 import { NotificationBanner } from "@/components/layout/notification-banner";
+import { SuccessFlash } from "@/components/layout/success-flash";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { PaginationBar } from "@/components/ui/pagination-bar";
@@ -19,6 +20,7 @@ import {
   formatProcurementUrgentBanner,
 } from "@/lib/procurement/notifications";
 import {
+  canCreateProcurement,
   canEditProcurementPricing,
   canViewProcurementPricing,
 } from "@/lib/procurement/permissions";
@@ -64,25 +66,30 @@ export default async function ProcurementPage({
 }: ProcurementPageProps) {
   const { role } = await requireProcurementRead();
   const showPricing = canViewProcurementPricing(role);
+  const canCreate = canCreateProcurement(role);
   const params = await searchParams;
   const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
   const query = params.q ?? "";
   const showLoadDetails = params.load === "1";
   const flash = successMessage(params.message);
   const procurementNotifications = await getProcurementNotifications();
-  const canApprove = role === "super_admin" || role === "admin";
   const [{ rows, total }, suppliers, employees] = await Promise.all([
     getProcurementsList(page, query),
-    getActiveSuppliersForSelect(),
-    getActiveEmployeesForSelect(),
+    canCreate ? getActiveSuppliersForSelect() : Promise.resolve([]),
+    canCreate ? getActiveEmployeesForSelect() : Promise.resolve([]),
   ]);
 
-  const urgentBanner = formatProcurementUrgentBanner(procurementNotifications);
+  const urgentBanner = formatProcurementUrgentBanner(
+    procurementNotifications,
+    role,
+  );
   const awarenessBanner = formatProcurementAwarenessBanner(
     procurementNotifications,
+    role,
   );
   const submittedPendingBanner = formatProcurementSubmittedPendingBanner(
     procurementNotifications.submittedPending,
+    role,
   );
 
   return (
@@ -91,35 +98,30 @@ export default async function ProcurementPage({
         title="Procurement"
         meta={recordLabel(total)}
         actions={
-          <ProcurementCreateDialog
-            suppliers={suppliers}
-            employees={employees}
-            canEditPricing={canEditProcurementPricing(role)}
-            defaultOpen={params.create === "1"}
-          />
+          canCreate ? (
+            <ProcurementCreateDialog
+              suppliers={suppliers}
+              employees={employees}
+              canEditPricing={canEditProcurementPricing(role)}
+              defaultOpen={params.create === "1"}
+            />
+          ) : null
         }
       />
 
-      {flash ? (
-        <p
-          className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-200"
-          role="status"
-        >
-          {flash}
-        </p>
-      ) : null}
+      {flash ? <SuccessFlash message={flash} /> : null}
 
-      {canApprove && urgentBanner ? (
+      {urgentBanner ? (
         <NotificationBanner urgency="urgent">{urgentBanner}</NotificationBanner>
       ) : null}
 
-      {canApprove && awarenessBanner ? (
+      {awarenessBanner ? (
         <NotificationBanner urgency="awareness">
           {awarenessBanner}
         </NotificationBanner>
       ) : null}
 
-      {!canApprove && submittedPendingBanner ? (
+      {submittedPendingBanner ? (
         <NotificationBanner urgency="awareness">
           {submittedPendingBanner}
         </NotificationBanner>
@@ -155,6 +157,7 @@ export default async function ProcurementPage({
             rows={rows}
             showPricing={showPricing}
             showLoadDetails={showLoadDetails}
+            viewerRole={role}
           />
 
           <PaginationBar

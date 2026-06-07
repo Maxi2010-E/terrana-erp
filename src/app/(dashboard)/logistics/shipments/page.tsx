@@ -1,5 +1,26 @@
-import { ModulePlaceholder } from "@/components/layout/module-placeholder";
+import { redirect } from "next/navigation";
 
-export default function Page() {
-  return <ModulePlaceholder title="Shipments" phase={8} />;
+import { buildLogisticsHubRedirect } from "@/lib/logistics/redirect";
+
+type ShipmentsRedirectProps = {
+  searchParams: Promise<{
+    page?: string;
+    q?: string;
+    status?: string;
+    message?: string;
+  }>;
+};
+
+export default async function ShipmentsPage({
+  searchParams,
+}: ShipmentsRedirectProps) {
+  const params = await searchParams;
+  redirect(
+    buildLogisticsHubRedirect("shipments", {
+      page: params.page,
+      q: params.q,
+      status: params.status,
+      message: params.message,
+    }),
+  );
 }

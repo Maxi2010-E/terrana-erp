@@ -16,7 +16,7 @@ export default async function NewEmployeePage() {
             Employee ID will be generated automatically.
           </p>
         </div>
-        <LinkButton variant="outline" href="/hr/employees">
+        <LinkButton variant="outline" href="/hr?tab=employees">
           Back to list
         </LinkButton>
       </div>
@@ -29,7 +29,7 @@ export default async function NewEmployeePage() {
           <EmployeeForm
             action={createEmployee}
             submitLabel="Create employee"
-            redirectTo="/hr/employees"
+            redirectTo="/hr?tab=employees"
           />
         </CardContent>
       </Card>

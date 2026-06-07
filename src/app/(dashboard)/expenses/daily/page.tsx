@@ -1,5 +1,26 @@
-import { ModulePlaceholder } from "@/components/layout/module-placeholder";
+import { redirect } from "next/navigation";
 
-export default function Page() {
-  return <ModulePlaceholder title="Daily Expenses" phase={7} />;
+import { buildExpensesHubRedirect } from "@/lib/expenses/redirect";
+
+type DailyExpensesRedirectProps = {
+  searchParams: Promise<{
+    page?: string;
+    q?: string;
+    message?: string;
+    create?: string;
+  }>;
+};
+
+export default async function DailyExpensesPage({
+  searchParams,
+}: DailyExpensesRedirectProps) {
+  const params = await searchParams;
+  redirect(
+    buildExpensesHubRedirect("daily", {
+      page: params.page,
+      q: params.q,
+      message: params.message,
+      create: params.create,
+    }),
+  );
 }

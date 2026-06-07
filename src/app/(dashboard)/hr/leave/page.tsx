@@ -1,5 +1,12 @@
-import { ModulePlaceholder } from "@/components/layout/module-placeholder";
+import { redirect } from "next/navigation";
 
-export default function Page() {
-  return <ModulePlaceholder title="Leave" phase={1} />;
+import { buildHrHubRedirect } from "@/lib/hr/redirect";
+
+type LeaveRedirectProps = {
+  searchParams: Promise<{ q?: string }>;
+};
+
+export default async function LeavePage({ searchParams }: LeaveRedirectProps) {
+  const params = await searchParams;
+  redirect(buildHrHubRedirect("leave", { q: params.q }));
 }

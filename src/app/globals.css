@@ -292,3 +292,256 @@
   background-color: rgb(67 56 202 / 0.45) !important;
   color: #e0e7ff !important;
 }
+
+/* Notification banners & cards — plain CSS so urgent/awareness colors always ship */
+.notification-banner-urgent {
+  border-radius: 0.75rem;
+  border: 1px solid rgb(220 38 38 / 0.35);
+  background-color: rgb(220 38 38 / 0.1);
+  color: #7f1d1d;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.notification-banner-awareness {
+  border-radius: 0.75rem;
+  border: 1px solid rgb(245 158 11 / 0.35);
+  background-color: rgb(245 158 11 / 0.1);
+  color: #78350f;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.notification-banner-ready {
+  border-radius: 0.75rem;
+  border: 1px solid rgb(22 163 74 / 0.35);
+  background-color: rgb(22 163 74 / 0.1);
+  color: #14532d;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.notification-card-urgent {
+  border-radius: 1rem;
+  border: 1px solid rgb(220 38 38 / 0.45);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+}
+
+.notification-card-awareness {
+  border-radius: 1rem;
+  border: 1px solid rgb(245 158 11 / 0.45);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+}
+
+.notification-strip-urgent {
+  background-color: rgb(220 38 38 / 0.1);
+  transition: background-color 0.15s ease;
+}
+
+.notification-strip-urgent:hover {
+  background-color: rgb(220 38 38 / 0.15);
+}
+
+.notification-strip-urgent-title {
+  color: #7f1d1d;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.notification-strip-urgent-subtitle {
+  color: rgb(153 27 27 / 0.9);
+  font-size: 0.875rem;
+}
+
+.payment-summary-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.expense-summary-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+}
+
+@media (max-width: 767px) {
+  .payment-summary-grid,
+  .expense-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Payroll due — last week of month; stays until all eligible staff are paid */
+.payroll-due-banner {
+  margin-bottom: 0;
+  border-radius: 1rem;
+  border: 3px solid #991b1b;
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 55%, #7f1d1d 100%);
+  box-shadow:
+    0 0 0 1px rgb(127 29 29 / 0.45),
+    0 10px 30px rgb(127 29 29 / 0.35),
+    inset 0 1px 0 rgb(255 255 255 / 0.12);
+  color: #fff;
+  animation: payroll-due-banner-pulse 2.4s ease-in-out infinite;
+}
+
+.payroll-due-banner-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.125rem 1.25rem;
+}
+
+.payroll-due-banner-badge {
+  flex-shrink: 0;
+  border-radius: 9999px;
+  border: 2px solid rgb(255 255 255 / 0.85);
+  background-color: rgb(0 0 0 / 0.2);
+  padding: 0.35rem 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  line-height: 1;
+}
+
+.payroll-due-banner-copy {
+  min-width: 0;
+  flex: 1 1 16rem;
+}
+
+.payroll-due-banner-preview-note {
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: rgb(255 255 255 / 0.88);
+}
+
+.payroll-due-banner-preview-code {
+  border-radius: 0.375rem;
+  background-color: rgb(0 0 0 / 0.22);
+  padding: 0.1rem 0.35rem;
+  font-size: 0.75rem;
+}
+
+.payroll-due-banner-title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+
+.payroll-due-banner-detail {
+  margin: 0.45rem 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: rgb(255 255 255 / 0.94);
+}
+
+.payroll-due-banner-link {
+  font-weight: 700;
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.payroll-due-banner-link:hover {
+  color: #fecaca;
+}
+
+@keyframes payroll-due-banner-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgb(127 29 29 / 0.45),
+      0 10px 30px rgb(127 29 29 / 0.35),
+      inset 0 1px 0 rgb(255 255 255 / 0.12);
+  }
+
+  50% {
+    box-shadow:
+      0 0 0 3px rgb(254 202 202 / 0.35),
+      0 14px 36px rgb(127 29 29 / 0.45),
+      inset 0 1px 0 rgb(255 255 255 / 0.16);
+  }
+}
+
+.dark .payroll-due-banner {
+  border-color: #fecaca;
+}
+
+.dark .notification-banner-urgent {
+  color: #fecaca;
+}
+
+.dark .notification-banner-awareness {
+  color: #fde68a;
+}
+
+.dark .notification-banner-ready {
+  color: #bbf7d0;
+}
+
+.dark .notification-strip-urgent-title {
+  color: #fecaca;
+}
+
+.dark .notification-strip-urgent-subtitle {
+  color: rgb(254 202 202 / 0.9);
+}
+
+.notification-tab-urgent {
+  color: #dc2626;
+}
+
+.notification-tab-urgent:hover {
+  background-color: rgb(220 38 38 / 0.1);
+}
+
+@media print {
+  body:has(#payslip-print-root) *,
+  body:has(#payment-receipt-print-root) *,
+  body:has(#supply-invoice-print-root) *,
+  body:has(#waste-slip-print-root) * {
+    visibility: hidden;
+  }
+
+  body:has(#payslip-print-root) #payslip-print-root,
+  body:has(#payslip-print-root) #payslip-print-root *,
+  body:has(#payment-receipt-print-root) #payment-receipt-print-root,
+  body:has(#payment-receipt-print-root) #payment-receipt-print-root *,
+  body:has(#supply-invoice-print-root) #supply-invoice-print-root,
+  body:has(#supply-invoice-print-root) #supply-invoice-print-root *,
+  body:has(#waste-slip-print-root) #waste-slip-print-root,
+  body:has(#waste-slip-print-root) #waste-slip-print-root * {
+    visibility: visible;
+  }
+
+  body:has(#payslip-print-root) #payslip-print-root,
+  body:has(#payment-receipt-print-root) #payment-receipt-print-root,
+  body:has(#supply-invoice-print-root) #supply-invoice-print-root,
+  body:has(#waste-slip-print-root) #waste-slip-print-root {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    border: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    box-shadow: none !important;
+  }
+
+  body:has(#payslip-print-root) #payslip-print-root article,
+  body:has(#payment-receipt-print-root) #payment-receipt-print-root article,
+  body:has(#supply-invoice-print-root) #supply-invoice-print-root article,
+  body:has(#waste-slip-print-root) #waste-slip-print-root article {
+    min-height: auto !important;
+    max-width: none !important;
+    box-shadow: none !important;
+  }
+}

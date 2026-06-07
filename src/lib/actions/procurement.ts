@@ -5,12 +5,15 @@ import { revalidatePath } from "next/cache";
 
 import {
   requireAuth,
+  requireHrAdmin,
   requireProcurementApprove,
   requireProcurementRead,
   requireProcurementWrite,
   requireSuperAdmin,
   requireSupplierRead,
 } from "@/lib/auth/require-role";
+import { requireActorUserId } from "@/lib/auth/actor-id";
+import { getNotificationActor } from "@/lib/notifications/actor";
 import type { AppRole } from "@/lib/roles";
 import { hasRole } from "@/lib/roles";
 import { PAGE_SIZE } from "@/lib/employees/constants";
@@ -37,6 +40,7 @@ import {
 } from "@/lib/procurement/constants";
 import {
   canEditProcurementPricing,
+  canSetProcurementFinalPrice,
   canViewProcurementPricing,
 } from "@/lib/procurement/permissions";
 import {
@@ -62,7 +66,10 @@ import {
   type ProcurementNotifications,
   canReceiveProcurementNotifications,
 } from "@/lib/procurement/notifications";
+import { canApproveProcurementStep } from "@/lib/permissions/matrix";
+import { procurementStepFromStatus } from "@/lib/permissions/approval";
 import { createClient } from "@/lib/supabase/server";
+import { nameFromMap, resolveUserDisplayNames } from "@/lib/users/resolve-user-names";
 
 type ProcurementInput = {
   procurement_type: ProcurementType;
@@ -449,8 +456,12 @@ export async function getProcurementById(id: string) {
       status,
       notes,
       created_at,
+      created_by,
       updated_at,
+      approved_by,
       approved_at,
+      first_approved_by,
+      first_approved_at,
       suppliers(supplier_name, supplier_code)
     `,
     )
@@ -470,10 +481,26 @@ export async function getProcurementById(id: string) {
     | { supplier_name: string; supplier_code: string }[]
     | null;
   const supplier = Array.isArray(supplierJoin) ? supplierJoin[0] : supplierJoin;
+  const row = data as ProcurementBatch & {
+    created_by?: string | null;
+    first_approved_by?: string | null;
+    approved_by?: string | null;
+  };
+  const nameByUserId = await resolveUserDisplayNames([
+    row.created_by,
+    row.first_approved_by,
+    row.approved_by,
+  ]);
 
   const batch: ProcurementBatch & {
     supplier_name?: string;
     supplier_code?: string;
+    created_by?: string | null;
+    created_by_name?: string | null;
+    first_approved_by?: string | null;
+    first_approved_by_name?: string | null;
+    first_approved_at?: string | null;
+    approved_by_name?: string | null;
   } = stripPricingForAccounts(
     {
       ...(data as ProcurementBatch),
@@ -485,6 +512,13 @@ export async function getProcurementById(id: string) {
       total_value: Number(data.total_value),
       supplier_name: supplier?.supplier_name,
       supplier_code: supplier?.supplier_code,
+      created_by: row.created_by,
+      created_by_name: nameFromMap(nameByUserId, row.created_by),
+      first_approved_by: row.first_approved_by,
+      first_approved_by_name: nameFromMap(nameByUserId, row.first_approved_by),
+      first_approved_at: (data as { first_approved_at?: string | null })
+        .first_approved_at,
+      approved_by_name: nameFromMap(nameByUserId, row.approved_by),
     },
     role,
   );
@@ -493,7 +527,7 @@ export async function getProcurementById(id: string) {
 }
 
 export async function getActiveSuppliersForSelect(): Promise<SupplierOption[]> {
-  await requireProcurementWrite();
+  await requireProcurementRead();
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -510,23 +544,17 @@ export async function getActiveSuppliersForSelect(): Promise<SupplierOption[]> {
 }
 
 export async function getActiveEmployeesForSelect(): Promise<EmployeeOption[]> {
-  const { appUser } = await requireAuth();
-  const role = (appUser?.role ?? "accounts") as AppRole;
+  const { role } = await requireAuth();
 
-  const canUseForProcurement = hasRole(role, [
+  const canUseEmployeePicker = hasRole(role, [
     "super_admin",
     "admin",
-    "accounts",
-  ]);
-  const canUseForProcessing = hasRole(role, [
-    "super_admin",
-    "admin",
-    "accounts",
-    "inventory_manager",
+    "warehouse_manager",
+    "logistics_manager",
   ]);
 
-  if (!canUseForProcurement && !canUseForProcessing) {
-    await requireProcurementWrite();
+  if (!canUseEmployeePicker) {
+    return [];
   }
 
   const supabase = await createClient();
@@ -660,19 +688,92 @@ export async function updateProcurement(
 
   revalidatePath("/procurement");
   revalidatePath(`/procurement/${batchId}`);
+  revalidatePath("/expenses");
+  revalidatePath("/expenses/operational");
+  revalidatePath("/suppliers");
+  revalidatePath("/dashboard", "layout");
+  return { success: true, batchId };
+}
+
+export async function updateProcurementUnitPrice(
+  batchId: string,
+  _prev: ProcurementFormState,
+  formData: FormData,
+): Promise<ProcurementFormState> {
+  const { role } = await requireHrAdmin();
+
+  const unitPrice = parseNumber(formData.get("unit_price"));
+  if (!unitPrice || unitPrice <= 0) {
+    return { error: "Enter a valid unit price greater than zero." };
+  }
+
+  const supabase = await createClient();
+  const { data: existing, error: fetchError } = await supabase
+    .from("procurement_batches")
+    .select("status, total_kg")
+    .eq("id", batchId)
+    .maybeSingle();
+
+  if (fetchError) {
+    return { error: fetchError.message };
+  }
+
+  if (!existing) {
+    return { error: "Procurement batch not found." };
+  }
+
+  const status = existing.status as ProcurementStatus;
+  if (!canSetProcurementFinalPrice(role, status)) {
+    return {
+      error: "Unit price can only be set while awaiting admin final approval.",
+    };
+  }
+
+  const totalKg = Number(existing.total_kg);
+  const { error } = await supabase
+    .from("procurement_batches")
+    .update({
+      unit_price: unitPrice,
+      total_value: calcTotalValue(totalKg, unitPrice),
+    })
+    .eq("id", batchId)
+    .eq("status", status);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath("/procurement");
+  revalidatePath(`/procurement/${batchId}`);
+  revalidatePath("/expenses");
+  revalidatePath("/expenses/operational");
   revalidatePath("/suppliers");
   revalidatePath("/dashboard", "layout");
   return { success: true, batchId };
 }
 
 export async function approveProcurement(batchId: string) {
-  const { authUser } = await requireProcurementApprove();
+  const session = await requireProcurementApprove();
+  const actorUserId = requireActorUserId(session);
+  const { role } = session;
 
   const supabase = await createClient();
   const { data: existing, error: fetchError } = await supabase
     .from("procurement_batches")
     .select(
-      "status, unit_price, product_condition, quality_decision, product_type, number_of_bags, total_kg, procurement_date",
+      `
+      status,
+      unit_price,
+      product_condition,
+      quality_decision,
+      product_type,
+      number_of_bags,
+      total_kg,
+      procurement_date,
+      created_by,
+      first_approved_by,
+      second_approved_by
+    `,
     )
     .eq("id", batchId)
     .maybeSingle();
@@ -685,58 +786,116 @@ export async function approveProcurement(batchId: string) {
     throw new Error("Procurement batch not found.");
   }
 
-  if (existing.status === "approved") {
+  const status = existing.status as ProcurementStatus;
+
+  if (status === "approved") {
     throw new Error("This batch is already approved.");
   }
 
-  if (Number(existing.unit_price) <= 0) {
-    throw new Error("Set a unit price before approving.");
+  if (status === "rejected") {
+    throw new Error("This batch was rejected.");
   }
 
-  const qualityError = validateQualityDecisionForProduct(
-    existing.product_condition as ProductCondition,
-    existing.quality_decision as QualityDecision,
-  );
-  if (qualityError) {
-    throw new Error(qualityError);
+  const step = procurementStepFromStatus(status);
+  if (!step) {
+    throw new Error("This batch is not awaiting approval.");
   }
 
-  const { error } = await supabase
-    .from("procurement_batches")
-    .update({
-      status: "approved" as ProcurementStatus,
-      approved_by: authUser?.id ?? null,
-      approved_at: new Date().toISOString(),
-    })
-    .eq("id", batchId);
-
-  if (error) {
-    throw new Error(error.message);
+  if (!canApproveProcurementStep(role, step)) {
+    throw new Error("You are not allowed to approve at this step.");
   }
 
-  const preStockResult = await ensurePreStockFromProcurementBatch(supabase, {
-    id: batchId,
-    quality_decision: existing.quality_decision,
-    product_type: existing.product_type,
-    number_of_bags: Number(existing.number_of_bags),
-    total_kg: Number(existing.total_kg),
-    procurement_date: existing.procurement_date,
-  });
+  if (step === "first") {
+    if (existing.created_by === actorUserId) {
+      throw new Error("You cannot approve your own submission.");
+    }
 
-  if (preStockResult.error) {
-    await supabase
+    const { error } = await supabase
       .from("procurement_batches")
       .update({
-        status: "pending_approval" as ProcurementStatus,
-        approved_by: null,
-        approved_at: null,
+        status: "pending_admin_approval" as ProcurementStatus,
+        first_approved_by: actorUserId,
+        first_approved_at: new Date().toISOString(),
       })
-      .eq("id", batchId);
-    throw new Error(preStockResult.error);
+      .eq("id", batchId)
+      .eq("status", status);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  } else if (step === "second") {
+    if (
+      existing.created_by === actorUserId ||
+      existing.first_approved_by === actorUserId
+    ) {
+      throw new Error("A different reviewer must complete the second approval.");
+    }
+
+    const { error } = await supabase
+      .from("procurement_batches")
+      .update({
+        status: "pending_admin_approval" as ProcurementStatus,
+        second_approved_by: actorUserId,
+        second_approved_at: new Date().toISOString(),
+      })
+      .eq("id", batchId)
+      .eq("status", status);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  } else {
+    if (Number(existing.unit_price) <= 0) {
+      throw new Error("Set a unit price before final approval.");
+    }
+
+    const qualityError = validateQualityDecisionForProduct(
+      existing.product_condition as ProductCondition,
+      existing.quality_decision as QualityDecision,
+    );
+    if (qualityError) {
+      throw new Error(qualityError);
+    }
+
+    const { error } = await supabase
+      .from("procurement_batches")
+      .update({
+        status: "approved" as ProcurementStatus,
+        approved_by: actorUserId,
+        approved_at: new Date().toISOString(),
+      })
+      .eq("id", batchId)
+      .eq("status", status);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const preStockResult = await ensurePreStockFromProcurementBatch(supabase, {
+      id: batchId,
+      quality_decision: existing.quality_decision,
+      product_type: existing.product_type,
+      number_of_bags: Number(existing.number_of_bags),
+      total_kg: Number(existing.total_kg),
+      procurement_date: existing.procurement_date,
+    });
+
+    if (preStockResult.error) {
+      await supabase
+        .from("procurement_batches")
+        .update({
+          status: "pending_admin_approval" as ProcurementStatus,
+          approved_by: null,
+          approved_at: null,
+        })
+        .eq("id", batchId);
+      throw new Error(preStockResult.error);
+    }
   }
 
   revalidatePath("/procurement");
   revalidatePath(`/procurement/${batchId}`);
+  revalidatePath("/inventory");
   revalidatePath("/inventory/pre-stock");
   revalidatePath("/inventory/export");
   revalidatePath("/dashboard", "layout");
@@ -761,6 +920,12 @@ export async function unlockProcurement(batchId: string) {
       status: "pending_approval" as ProcurementStatus,
       approved_by: null,
       approved_at: null,
+      first_approved_by: null,
+      first_approved_at: null,
+      second_approved_by: null,
+      second_approved_at: null,
+      rejected_by: null,
+      rejected_at: null,
     })
     .eq("id", batchId);
 
@@ -770,6 +935,7 @@ export async function unlockProcurement(batchId: string) {
 
   revalidatePath("/procurement");
   revalidatePath(`/procurement/${batchId}`);
+  revalidatePath("/inventory");
   revalidatePath("/inventory/pre-stock");
   revalidatePath("/inventory/export");
   revalidatePath("/dashboard", "layout");
@@ -812,68 +978,106 @@ export async function getSupplierProcurementCounts(
 
 export const getProcurementNotifications = cache(
   async (): Promise<ProcurementNotifications> => {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
+    const actor = await getNotificationActor();
+    if (!actor) {
       return EMPTY_PROCUREMENT_NOTIFICATIONS;
     }
 
-    const { data: appUser } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    const role = (appUser?.role ?? "accounts") as AppRole;
+    const { userId, role } = actor;
 
     if (!canReceiveProcurementNotifications(role)) {
       return EMPTY_PROCUREMENT_NOTIFICATIONS;
     }
 
-    if (role === "super_admin" || role === "admin") {
-      const { data, error } = await supabase
-        .from("procurement_batches")
-        .select("unit_price")
-        .eq("status", "pending_approval");
+    const supabase = await createClient();
 
-      if (error) {
+    const awaitingConfirmationFilter =
+      "status.eq.pending_approval,status.eq.pending_second_approval";
+
+    if (role === "super_admin" || role === "admin") {
+      const [awaitingConfirmation, finalResult, needsPriceResult] =
+        await Promise.all([
+          supabase
+            .from("procurement_batches")
+            .select("id", { count: "exact", head: true })
+            .or(awaitingConfirmationFilter),
+          supabase
+            .from("procurement_batches")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "pending_admin_approval"),
+          supabase
+            .from("procurement_batches")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "pending_admin_approval")
+            .lte("unit_price", 0),
+        ]);
+
+      if (
+        awaitingConfirmation.error ||
+        finalResult.error ||
+        needsPriceResult.error
+      ) {
         return EMPTY_PROCUREMENT_NOTIFICATIONS;
       }
 
-      const rows = data ?? [];
-      const pendingApproval = rows.length;
-      const needsPrice = rows.filter(
-        (row) => Number(row.unit_price) <= 0,
-      ).length;
+      const awaitingFinal = finalResult.count ?? 0;
+      const needsPrice = needsPriceResult.count ?? 0;
 
       return {
-        pendingApproval,
+        urgentCount: Math.max(0, awaitingFinal - needsPrice),
+        awarenessCount: awaitingConfirmation.count ?? 0,
         needsPrice,
-        readyToApprove: pendingApproval - needsPrice,
         submittedPending: 0,
       };
     }
 
-    const { count, error: submittedError } = await supabase
-      .from("procurement_batches")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "pending_approval")
-      .eq("created_by", user.id);
+    if (role === "cash_manager" || role === "logistics_manager") {
+      const [toConfirm, confirmedByMe] = await Promise.all([
+        supabase
+          .from("procurement_batches")
+          .select("id", { count: "exact", head: true })
+          .or(awaitingConfirmationFilter),
+        supabase
+          .from("procurement_batches")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "pending_admin_approval")
+          .eq("first_approved_by", userId),
+      ]);
 
-    if (submittedError) {
+      if (toConfirm.error || confirmedByMe.error) {
+        return EMPTY_PROCUREMENT_NOTIFICATIONS;
+      }
+
+      return {
+        urgentCount: toConfirm.count ?? 0,
+        awarenessCount: confirmedByMe.count ?? 0,
+        needsPrice: 0,
+        submittedPending: 0,
+      };
+    }
+
+    const [submittedPending, withAdmin] = await Promise.all([
+      supabase
+        .from("procurement_batches")
+        .select("id", { count: "exact", head: true })
+        .or(awaitingConfirmationFilter)
+        .eq("created_by", userId),
+      supabase
+        .from("procurement_batches")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending_admin_approval")
+        .eq("created_by", userId),
+    ]);
+
+    if (submittedPending.error || withAdmin.error) {
       return EMPTY_PROCUREMENT_NOTIFICATIONS;
     }
 
-    const submittedPending = count ?? 0;
-
     return {
-      pendingApproval: submittedPending,
+      urgentCount: 0,
+      awarenessCount: withAdmin.count ?? 0,
       needsPrice: 0,
-      readyToApprove: 0,
-      submittedPending,
+      submittedPending: submittedPending.count ?? 0,
     };
   },
 );
@@ -884,5 +1088,5 @@ export const getProcurementAdminNotifications = getProcurementNotifications;
 /** @deprecated Use getProcurementNotifications */
 export async function getPendingProcurementApprovalCount(): Promise<number> {
   const notifications = await getProcurementNotifications();
-  return notifications.pendingApproval;
+  return notifications.urgentCount;
 }

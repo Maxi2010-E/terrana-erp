@@ -9,6 +9,8 @@ import {
   requireProcessingApprove,
   requireSuperAdmin,
 } from "@/lib/auth/require-role";
+import { requireActorUserId } from "@/lib/auth/actor-id";
+import { getNotificationActor } from "@/lib/notifications/actor";
 import type { AppRole } from "@/lib/roles";
 import { PAGE_SIZE } from "@/lib/employees/constants";
 import { getActiveEmployeesForSelect } from "@/lib/actions/procurement";
@@ -49,7 +51,10 @@ import type {
   ProcessingSessionListRow,
   WasteRecordEntry,
 } from "@/lib/processing/types";
+import { canApproveProcessingStep } from "@/lib/permissions/matrix";
+import { processingStepFromStatus } from "@/lib/permissions/approval";
 import { createClient } from "@/lib/supabase/server";
+import { nameFromMap, resolveUserDisplayNames } from "@/lib/users/resolve-user-names";
 
 type BatchRow = {
   id: string;
@@ -226,27 +231,18 @@ export async function getProcessingQueue(): Promise<ProcessingQueueRow[]> {
 
 export const getProcessingQueueNotifications = cache(
   async (): Promise<ProcessingQueueNotifications> => {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
+    const actor = await getNotificationActor();
+    if (!actor) {
       return EMPTY_PROCESSING_QUEUE_NOTIFICATIONS;
     }
 
-    const { data: appUser } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    const role = (appUser?.role ?? "accounts") as AppRole;
+    const { userId, role } = actor;
 
     if (!canReceiveProcessingQueueNotifications(role)) {
       return EMPTY_PROCESSING_QUEUE_NOTIFICATIONS;
     }
 
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from("procurement_batches")
       .select("id, number_of_bags")
@@ -285,17 +281,22 @@ export const getProcessingQueueNotifications = cache(
       const { count, error: pendingError } = await supabase
         .from("processing_sessions")
         .select("id", { count: "exact", head: true })
-        .eq("status", "pending_approval");
+        .eq("status", "pending_admin_approval");
 
       if (!pendingError && count != null) {
         pendingApproval = count;
       }
     } else {
+      const reviewStatuses =
+        role === "logistics_manager"
+          ? ["pending_second_approval"]
+          : ["pending_approval", "pending_second_approval"];
+
       const { count, error: submittedError } = await supabase
         .from("processing_sessions")
         .select("id", { count: "exact", head: true })
-        .eq("status", "pending_approval")
-        .eq("created_by", user.id);
+        .in("status", reviewStatuses)
+        .neq("created_by", userId);
 
       if (!submittedError && count != null) {
         submittedPending = count;
@@ -314,7 +315,14 @@ export const getProcessingQueueNotifications = cache(
 export async function getPendingProcessingSessions(): Promise<
   ProcessingPendingSessionRow[]
 > {
-  await requireProcessingApprove();
+  const { role } = await requireProcessingApprove();
+
+  const statusFilter =
+    role === "super_admin" || role === "admin"
+      ? ["pending_admin_approval"]
+      : role === "logistics_manager"
+        ? ["pending_second_approval"]
+        : ["pending_approval", "pending_second_approval"];
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -334,7 +342,7 @@ export async function getPendingProcessingSessions(): Promise<
       )
     `,
     )
-    .eq("status", "pending_approval")
+    .in("status", statusFilter)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -436,6 +444,7 @@ export async function getMyPendingProcessingSessions(): Promise<
 
 export async function getProcessingSessionsList(
   page: number,
+  query = "",
 ): Promise<{ rows: ProcessingSessionListRow[]; total: number }> {
   await requireProcessingRead();
 
@@ -443,7 +452,7 @@ export async function getProcessingSessionsList(
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  const { data, count, error } = await supabase
+  let builder = supabase
     .from("processing_sessions")
     .select(
       `
@@ -461,6 +470,16 @@ export async function getProcessingSessionsList(
     )
     .order("session_number", { ascending: false })
     .range(from, to);
+
+  const trimmed = query.trim();
+  if (trimmed) {
+    const term = `%${trimmed}%`;
+    builder = builder.or(
+      `session_number.ilike.${term},procurement_batches.batch_number.ilike.${term}`,
+    );
+  }
+
+  const { data, count, error } = await builder;
 
   if (error) {
     throw new Error(error.message);
@@ -532,7 +551,9 @@ export async function getProcessingSessionById(
       processed_by,
       notes,
       completed_at,
+      approved_by,
       approved_at,
+      rejected_by,
       rejected_at,
       created_at,
       procurement_batches!inner(
@@ -638,6 +659,11 @@ export async function getProcessingSessionById(
       null;
   }
 
+  const nameByUserId = await resolveUserDisplayNames([
+    data.approved_by,
+    data.rejected_by,
+  ]);
+
   return {
     id: data.id,
     session_number: data.session_number,
@@ -661,8 +687,12 @@ export async function getProcessingSessionById(
     processed_by_label: processedByLabel,
     notes: data.notes,
     completed_at: data.completed_at,
+    approved_by: data.approved_by,
     approved_at: data.approved_at,
+    approved_by_name: nameFromMap(nameByUserId, data.approved_by),
+    rejected_by: data.rejected_by,
     rejected_at: data.rejected_at,
+    rejected_by_name: nameFromMap(nameByUserId, data.rejected_by),
     created_at: data.created_at,
     output: outputRow
       ? {
@@ -756,6 +786,14 @@ function validateOutput(output: ReturnType<typeof parseOutput>): string | null {
     !isStandardKgPerBag(output.kg_per_bag)
   ) {
     return "Output package size must be 25 or 20 kg per bag.";
+  }
+
+  if (output.bags_produced > 0) {
+    const hasKgPerBag =
+      output.kg_per_bag != null && output.kg_per_bag > 0;
+    if (!hasKgPerBag && output.extra_kg <= 0) {
+      return "Enter package size (25 or 20 kg per bag) or extra KG when reporting bags produced.";
+    }
   }
 
   const totalKg = calcProcessingOutputKg(output);
@@ -988,7 +1026,12 @@ export async function updateProcessingSession(
   const notes = String(formData.get("notes") ?? "").trim() || null;
   const output = parseOutput(formData);
   const waste = parseWaste(formData);
+  const outputError = validateOutput(output);
   const wasteError = validateWaste(waste);
+
+  if (outputError) {
+    return { error: outputError };
+  }
 
   if (wasteError) {
     return { error: wasteError };
@@ -1115,6 +1158,12 @@ export async function completeProcessingSession(
   });
 
   if (preStockError) {
+    if (preStockError.message.includes("pre_stock_total_kg_check")) {
+      return {
+        error:
+          "Pre-stock weight must be greater than zero. Enter package size (25 or 20 kg per bag) or extra KG for the output.",
+      };
+    }
     return { error: preStockError.message };
   }
 
@@ -1157,18 +1206,25 @@ export async function completeProcessingSession(
 
   revalidatePath("/processing");
   revalidatePath(`/processing/${sessionId}`);
+  revalidatePath("/inventory");
   revalidatePath("/inventory/pre-stock");
+  revalidatePath("/expenses");
+  revalidatePath("/expenses/operational");
   revalidatePath("/dashboard", "layout");
   return { success: true };
 }
 
 export async function approveProcessingSession(sessionId: string) {
-  const { authUser } = await requireProcessingApprove();
+  const authSession = await requireProcessingApprove();
+  const actorUserId = requireActorUserId(authSession);
+  const { role } = authSession;
 
   const supabase = await createClient();
   const { data: session, error: fetchError } = await supabase
     .from("processing_sessions")
-    .select("id, status")
+    .select(
+      "id, status, created_by, first_approved_by, second_approved_by",
+    )
     .eq("id", sessionId)
     .maybeSingle();
 
@@ -1180,21 +1236,74 @@ export async function approveProcessingSession(sessionId: string) {
     throw new Error("Processing session not found.");
   }
 
-  if (session.status !== "pending_approval") {
-    throw new Error("Only pending sessions can be approved.");
+  const status = session.status as ProcessingSessionStatus;
+
+  if (status === "rejected" || status === "in_progress" || status === "completed") {
+    throw new Error("This session is not awaiting approval.");
   }
 
-  const { error } = await supabase
-    .from("processing_sessions")
-    .update({
-      status: "in_progress" as ProcessingSessionStatus,
-      approved_by: authUser?.id ?? null,
-      approved_at: new Date().toISOString(),
-    })
-    .eq("id", sessionId);
+  const step = processingStepFromStatus(status);
+  if (!step) {
+    throw new Error("This session is not awaiting approval.");
+  }
 
-  if (error) {
-    throw new Error(error.message);
+  if (!canApproveProcessingStep(role, step)) {
+    throw new Error("You are not allowed to approve at this step.");
+  }
+
+  if (step === "first") {
+    if (session.created_by === actorUserId) {
+      throw new Error("You cannot approve your own submission.");
+    }
+
+    const { error } = await supabase
+      .from("processing_sessions")
+      .update({
+        status: "pending_second_approval" as ProcessingSessionStatus,
+        first_approved_by: actorUserId,
+        first_approved_at: new Date().toISOString(),
+      })
+      .eq("id", sessionId)
+      .eq("status", status);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  } else if (step === "second") {
+    if (
+      session.created_by === actorUserId ||
+      session.first_approved_by === actorUserId
+    ) {
+      throw new Error("A different reviewer must complete the second approval.");
+    }
+
+    const { error } = await supabase
+      .from("processing_sessions")
+      .update({
+        status: "pending_admin_approval" as ProcessingSessionStatus,
+        second_approved_by: actorUserId,
+        second_approved_at: new Date().toISOString(),
+      })
+      .eq("id", sessionId)
+      .eq("status", status);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  } else {
+    const { error } = await supabase
+      .from("processing_sessions")
+      .update({
+        status: "in_progress" as ProcessingSessionStatus,
+        approved_by: actorUserId,
+        approved_at: new Date().toISOString(),
+      })
+      .eq("id", sessionId)
+      .eq("status", status);
+
+    if (error) {
+      throw new Error(error.message);
+    }
   }
 
   revalidatePath("/processing");
@@ -1203,7 +1312,8 @@ export async function approveProcessingSession(sessionId: string) {
 }
 
 export async function rejectProcessingSession(sessionId: string) {
-  const { authUser } = await requireProcessingApprove();
+  const authSession = await requireProcessingApprove();
+  const actorUserId = requireActorUserId(authSession);
 
   const supabase = await createClient();
   const { data: session, error: fetchError } = await supabase
@@ -1220,7 +1330,12 @@ export async function rejectProcessingSession(sessionId: string) {
     throw new Error("Processing session not found.");
   }
 
-  if (session.status !== "pending_approval") {
+  const status = session.status as ProcessingSessionStatus;
+  if (
+    status !== "pending_approval" &&
+    status !== "pending_second_approval" &&
+    status !== "pending_admin_approval"
+  ) {
     throw new Error("Only pending sessions can be rejected.");
   }
 
@@ -1228,10 +1343,11 @@ export async function rejectProcessingSession(sessionId: string) {
     .from("processing_sessions")
     .update({
       status: "rejected" as ProcessingSessionStatus,
-      rejected_by: authUser?.id ?? null,
+      rejected_by: actorUserId,
       rejected_at: new Date().toISOString(),
     })
-    .eq("id", sessionId);
+    .eq("id", sessionId)
+    .eq("status", status);
 
   if (error) {
     throw new Error(error.message);
@@ -1342,6 +1458,7 @@ export async function unlockProcessingSession(
 
   revalidatePath("/processing");
   revalidatePath(`/processing/${sessionId}`);
+  revalidatePath("/inventory");
   revalidatePath("/inventory/pre-stock");
   return {};
 }

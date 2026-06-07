@@ -27,7 +27,13 @@ export const PAYMENT_STATUSES = [
 ] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
-export const PROCUREMENT_STATUSES = ["pending_approval", "approved"] as const;
+export const PROCUREMENT_STATUSES = [
+  "pending_approval",
+  "pending_second_approval",
+  "pending_admin_approval",
+  "approved",
+  "rejected",
+] as const;
 export type ProcurementStatus = (typeof PROCUREMENT_STATUSES)[number];
 
 export const PROCUREMENT_TYPE_LABELS: Record<ProcurementType, string> = {
@@ -69,8 +75,11 @@ export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
 };
 
 export const PROCUREMENT_STATUS_LABELS: Record<ProcurementStatus, string> = {
-  pending_approval: "Pending approval",
+  pending_approval: "Awaiting confirmation",
+  pending_second_approval: "Awaiting confirmation",
+  pending_admin_approval: "Awaiting admin",
   approved: "Approved",
+  rejected: "Rejected",
 };
 
 /** Standard bag weights (kg) — fixed options wherever kg/bag applies. */

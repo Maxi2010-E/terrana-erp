@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { ProcessingSessionForm } from "@/components/processing/processing-session-form";
+import { WasteSlipPreviewDialog } from "@/components/waste/waste-slip-preview-dialog";
 import { ProcessingSessionRequestSummary } from "@/components/processing/processing-session-request-summary";
 import { ProcessingStatusBadge } from "@/components/processing/processing-status-badge";
 import { ProductTypeBadge } from "@/components/procurement/product-type-badge";
@@ -15,10 +16,13 @@ import {
   unlockProcessingSession,
 } from "@/lib/actions/processing";
 import { getActiveEmployeesForSelect } from "@/lib/actions/procurement";
+import { sessionHasWaste, totalWasteKg } from "@/lib/actions/waste";
 import { requireProcessingRead } from "@/lib/auth/require-role";
 import { notificationCardClassName } from "@/lib/notifications/urgency";
+import { processingStepFromStatus } from "@/lib/permissions/approval";
 import {
   canApproveProcessingSession,
+  canRejectAtApprovalStep,
   canUnlockProcessingSession,
 } from "@/lib/processing/permissions";
 import type { ProcessingSessionStatus } from "@/lib/processing/constants";
@@ -57,14 +61,30 @@ export default async function ProcessingDetailPage({
   }
 
   const employees = await getActiveEmployeesForSelect();
-  const canApprove = canApproveProcessingSession(role);
-  const isPending = session.status === "pending_approval";
+  const approvalStep = processingStepFromStatus(
+    session.status as ProcessingSessionStatus,
+  );
+  const canApprove =
+    approvalStep != null &&
+    canApproveProcessingSession(role, approvalStep);
+  const canReject =
+    approvalStep != null && canRejectAtApprovalStep(role);
+  const isPending = approvalStep != null;
   const isRejected = session.status === "rejected";
   const isWorkable = session.status === "in_progress";
+
+  const approveLabel =
+    approvalStep === "first"
+      ? "Approve 1st review"
+      : approvalStep === "second"
+        ? "Approve 2nd review"
+        : "Final approve";
 
   const boundUnlock = unlockProcessingSession.bind(null, id);
   const boundApprove = approveProcessingSessionAction.bind(null, id);
   const boundReject = rejectProcessingSessionAction.bind(null, id);
+  const showWasteSlip =
+    session.status === "completed" && sessionHasWaste(session.waste);
 
   return (
     <div className="space-y-6">
@@ -73,21 +93,30 @@ export default async function ProcessingDetailPage({
         meta={`Batch ${session.batch_number} · ${session.supplier_name}`}
         actions={
           <div className="flex flex-wrap gap-2">
-            {canApprove && isPending ? (
-              <>
-                <ProcurementActionButton
-                  label="Approve processing"
-                  action={boundApprove}
-                  redirectTo={`/processing/${id}?message=approved`}
-                />
-                <ProcurementActionButton
-                  label="Reject"
-                  variant="outline"
-                  action={boundReject}
-                  redirectTo={`/processing/${id}?message=rejected`}
-                />
-              </>
+            {canApprove ? (
+              <ProcurementActionButton
+                label={approveLabel}
+                action={boundApprove}
+                redirectTo={`/processing/${id}?message=approved`}
+              />
             ) : null}
+            {canReject ? (
+              <ProcurementActionButton
+                label="Reject"
+                variant="outline"
+                action={boundReject}
+                redirectTo={`/processing/${id}?message=rejected`}
+              />
+            ) : null}
+            {showWasteSlip ? (
+              <WasteSlipPreviewDialog
+                sessionId={id}
+                label="Waste slip"
+              />
+            ) : null}
+            <LinkButton variant="outline" href="/waste">
+              Waste records
+            </LinkButton>
             <LinkButton variant="outline" href="/processing">
               Back to processing
             </LinkButton>
@@ -113,16 +142,23 @@ export default async function ProcessingDetailPage({
           <span className="text-sm text-muted-foreground">
             Completed {new Date(session.completed_at).toLocaleDateString()}
             {session.yield_pct != null ? ` · Yield ${session.yield_pct}%` : ""}
+            {showWasteSlip
+              ? ` · Waste ${totalWasteKg(session.waste).toLocaleString()} kg`
+              : ""}
           </span>
         ) : null}
         {session.approved_at ? (
           <span className="text-sm text-muted-foreground">
-            Approved {new Date(session.approved_at).toLocaleString()}
+            Approved by {session.approved_by_name ?? "—"}
+            {" · "}
+            {new Date(session.approved_at).toLocaleString()}
           </span>
         ) : null}
         {session.rejected_at ? (
           <span className="text-sm text-muted-foreground">
-            Rejected {new Date(session.rejected_at).toLocaleString()}
+            Rejected by {session.rejected_by_name ?? "—"}
+            {" · "}
+            {new Date(session.rejected_at).toLocaleString()}
           </span>
         ) : null}
       </div>

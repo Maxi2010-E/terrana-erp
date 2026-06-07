@@ -13,11 +13,13 @@ import {
   type ProductCondition,
 } from "@/lib/procurement/constants";
 import type { ProcurementListRow } from "@/lib/procurement/types";
+import type { AppRole } from "@/lib/roles";
 
 type ProcurementListTableProps = {
   rows: ProcurementListRow[];
   showPricing: boolean;
   showLoadDetails?: boolean;
+  viewerRole?: AppRole;
 };
 
 const HEAD_CELL =
@@ -28,6 +30,7 @@ export function ProcurementListTable({
   rows,
   showPricing,
   showLoadDetails = false,
+  viewerRole,
 }: ProcurementListTableProps) {
   const columnCount =
     (showPricing ? 10 : 9) + (showLoadDetails ? 1 : 0);
@@ -119,6 +122,7 @@ export function ProcurementListTable({
                 <td className={BODY_CELL}>
                   <ProcurementStatusBadge
                     status={row.status as ProcurementStatus}
+                    viewerRole={viewerRole}
                   />
                 </td>
                 <td className={BODY_CELL}>

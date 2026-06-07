@@ -25,3 +25,15 @@ export function formatNairaOrDash(
 
   return formatNaira(Number(amount), options);
 }
+
+export function formatMoneyIfAllowed(
+  amount: number | null | undefined,
+  canView: boolean,
+  options: FormatNairaOptions = {},
+): string {
+  if (!canView) {
+    return "—";
+  }
+
+  return formatNairaOrDash(amount, options);
+}

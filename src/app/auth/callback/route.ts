@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { recordLoginAttendance } from "@/lib/actions/attendance";
 import { safeRedirectPath } from "@/lib/auth/safe-redirect";
 import { createClient } from "@/lib/supabase/server";
 
@@ -31,6 +32,8 @@ export async function GET(request: Request) {
           );
         }
       }
+
+      await recordLoginAttendance();
 
       return NextResponse.redirect(`${origin}${next}`);
     }

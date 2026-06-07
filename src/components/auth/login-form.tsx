@@ -13,8 +13,14 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  getGeofenceRequirement,
+  loginAttendanceErrorMessage,
+  recordLoginSession,
+} from "@/lib/auth/record-login-session";
 import { mapAuthError } from "@/lib/auth/error-messages";
-import { recordLoginSessionAction } from "@/lib/actions/auth";
+import { requestClientGeoPosition } from "@/lib/office/client-geolocation";
+import type { GeofenceRequirement } from "@/lib/office/types";
 import { safeRedirectPath } from "@/lib/auth/safe-redirect";
 import { createClient } from "@/lib/supabase/client";
 import { terranaColors } from "@/lib/theme";
@@ -23,6 +29,7 @@ type LoginFormProps = {
   initialError?: string | null;
   initialMessage?: string | null;
   redirectTo?: string;
+  geofenceRequirement?: GeofenceRequirement;
 };
 
 function focusPasswordField() {
@@ -35,13 +42,14 @@ export function LoginForm({
   initialError = null,
   initialMessage = null,
   redirectTo = "/dashboard",
+  geofenceRequirement = { required: false, facilityName: "Terrana facility" },
 }: LoginFormProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(initialError);
-  const [phase, setPhase] = useState<"idle" | "signing_in" | "redirecting">(
-    "idle",
-  );
+  const [phase, setPhase] = useState<
+    "idle" | "signing_in" | "locating" | "redirecting"
+  >("idle");
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -84,9 +92,47 @@ export function LoginForm({
         }
       }
 
+      let geofence = geofenceRequirement;
+      if (!geofence.required) {
+        geofence = await getGeofenceRequirement(supabase);
+      }
+
+      let coords: { latitude: number; longitude: number } | null = null;
+
+      if (geofence.required) {
+        setPhase("locating");
+        try {
+          const position = await requestClientGeoPosition();
+          coords = {
+            latitude: position.latitude,
+            longitude: position.longitude,
+          };
+        } catch (locationError) {
+          await supabase.auth.signOut();
+          setError(
+            locationError instanceof Error
+              ? locationError.message
+              : "Location is required to sign in at the facility.",
+          );
+          setPassword("");
+          setPhase("idle");
+          focusPasswordField();
+          return;
+        }
+      }
+
       setPhase("redirecting");
 
-      void recordLoginSessionAction();
+      const loginRecorded = await recordLoginSession(supabase, coords);
+
+      if (!loginRecorded.ok) {
+        await supabase.auth.signOut();
+        setError(loginAttendanceErrorMessage(loginRecorded));
+        setPassword("");
+        setPhase("idle");
+        focusPasswordField();
+        return;
+      }
 
       const destination = safeRedirectPath(redirectTo);
       window.location.replace(destination);
@@ -120,6 +166,16 @@ export function LoginForm({
         </div>
       </CardHeader>
       <CardContent>
+        {geofenceRequirement.required ? (
+          <p
+            className="mb-4 rounded-md border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-sm text-amber-950 dark:text-amber-100"
+            role="status"
+          >
+            Attendance requires your location at{" "}
+            <span className="font-medium">{geofenceRequirement.facilityName}</span>
+            . Allow location when prompted.
+          </p>
+        ) : null}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -175,9 +231,11 @@ export function LoginForm({
           <Button type="submit" className="w-full" disabled={isBusy}>
             {phase === "signing_in"
               ? "Checking password..."
-              : phase === "redirecting"
-                ? "Opening dashboard..."
-                : "Sign in"}
+              : phase === "locating"
+                ? "Checking facility location..."
+                : phase === "redirecting"
+                  ? "Opening dashboard..."
+                  : "Sign in"}
           </Button>
         </form>
       </CardContent>

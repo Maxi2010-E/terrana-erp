@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,43 @@ type EmployeeFormProps = {
   redirectTo?: string;
 };
 
+type EmployeeFormFields = {
+  first_name: string;
+  last_name: string;
+  phone: string;
+  email: string;
+  address: string;
+  hire_date: string;
+  status: Employee["status"];
+  department: Employee["department"];
+  employee_type: Employee["employee_type"];
+  job_title: string;
+  monthly_salary: string;
+  guarantor_name: string;
+  guarantor_phone: string;
+  guarantor_address: string;
+};
+
+function buildEmployeeFormFields(employee?: Employee | null): EmployeeFormFields {
+  return {
+    first_name: employee?.first_name ?? "",
+    last_name: employee?.last_name ?? "",
+    phone: employee?.phone ?? "",
+    email: employee?.email ?? "",
+    address: employee?.address ?? "",
+    hire_date: employee?.hire_date ?? "",
+    status: employee?.status ?? "active",
+    department: employee?.department ?? "administration",
+    employee_type: employee?.employee_type ?? "administrative",
+    job_title: employee?.job_title ?? "",
+    monthly_salary:
+      employee != null ? String(employee.monthly_salary) : "",
+    guarantor_name: employee?.guarantor_name ?? "",
+    guarantor_phone: employee?.guarantor_phone ?? "",
+    guarantor_address: employee?.guarantor_address ?? "",
+  };
+}
+
 export function EmployeeForm({
   action,
   employee,
@@ -38,6 +75,21 @@ export function EmployeeForm({
 }: EmployeeFormProps) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(action, {});
+  const employeeKey = employee?.id ?? "new";
+  const [fields, setFields] = useState<EmployeeFormFields>(() =>
+    buildEmployeeFormFields(employee),
+  );
+
+  useEffect(() => {
+    setFields(buildEmployeeFormFields(employee));
+  }, [employeeKey]);
+
+  function updateField<K extends keyof EmployeeFormFields>(
+    key: K,
+    value: EmployeeFormFields[K],
+  ) {
+    setFields((current) => ({ ...current, [key]: value }));
+  }
 
   useEffect(() => {
     if (state.success && redirectTo) {
@@ -71,7 +123,8 @@ export function EmployeeForm({
               id="first_name"
               name="first_name"
               required
-              defaultValue={employee?.first_name ?? ""}
+              value={fields.first_name}
+              onChange={(event) => updateField("first_name", event.target.value)}
             />
           </div>
           <div className="space-y-2">
@@ -80,7 +133,8 @@ export function EmployeeForm({
               id="last_name"
               name="last_name"
               required
-              defaultValue={employee?.last_name ?? ""}
+              value={fields.last_name}
+              onChange={(event) => updateField("last_name", event.target.value)}
             />
           </div>
           <div className="space-y-2">
@@ -88,7 +142,8 @@ export function EmployeeForm({
             <Input
               id="phone"
               name="phone"
-              defaultValue={employee?.phone ?? ""}
+              value={fields.phone}
+              onChange={(event) => updateField("phone", event.target.value)}
             />
           </div>
           <div className="space-y-2">
@@ -97,7 +152,8 @@ export function EmployeeForm({
               id="email"
               name="email"
               type="email"
-              defaultValue={employee?.email ?? ""}
+              value={fields.email}
+              onChange={(event) => updateField("email", event.target.value)}
             />
           </div>
           <div className="space-y-2 md:col-span-2">
@@ -105,7 +161,8 @@ export function EmployeeForm({
             <Input
               id="address"
               name="address"
-              defaultValue={employee?.address ?? ""}
+              value={fields.address}
+              onChange={(event) => updateField("address", event.target.value)}
             />
           </div>
           <div className="space-y-2">
@@ -115,7 +172,8 @@ export function EmployeeForm({
               name="hire_date"
               type="date"
               required
-              defaultValue={employee?.hire_date ?? ""}
+              value={fields.hire_date}
+              onChange={(event) => updateField("hire_date", event.target.value)}
             />
           </div>
           <div className="space-y-2">
@@ -123,7 +181,10 @@ export function EmployeeForm({
             <select
               id="status"
               name="status"
-              defaultValue={employee?.status ?? "active"}
+              value={fields.status}
+              onChange={(event) =>
+                updateField("status", event.target.value as Employee["status"])
+              }
               className={selectClassName}
             >
               {EMPLOYEE_STATUSES.map((status) => (
@@ -146,7 +207,13 @@ export function EmployeeForm({
             <select
               id="department"
               name="department"
-              defaultValue={employee?.department ?? "administration"}
+              value={fields.department}
+              onChange={(event) =>
+                updateField(
+                  "department",
+                  event.target.value as Employee["department"],
+                )
+              }
               className={selectClassName}
             >
               {EMPLOYEE_DEPARTMENTS.map((department) => (
@@ -161,7 +228,13 @@ export function EmployeeForm({
             <select
               id="employee_type"
               name="employee_type"
-              defaultValue={employee?.employee_type ?? "administrative"}
+              value={fields.employee_type}
+              onChange={(event) =>
+                updateField(
+                  "employee_type",
+                  event.target.value as Employee["employee_type"],
+                )
+              }
               className={selectClassName}
             >
               {EMPLOYEE_TYPES.map((type) => (
@@ -177,7 +250,8 @@ export function EmployeeForm({
               id="job_title"
               name="job_title"
               required
-              defaultValue={employee?.job_title ?? ""}
+              value={fields.job_title}
+              onChange={(event) => updateField("job_title", event.target.value)}
             />
           </div>
           <div className="space-y-2">
@@ -189,7 +263,10 @@ export function EmployeeForm({
               min="0"
               step="0.01"
               required
-              defaultValue={employee?.monthly_salary ?? "0"}
+              value={fields.monthly_salary}
+              onChange={(event) =>
+                updateField("monthly_salary", event.target.value)
+              }
             />
           </div>
         </div>
@@ -205,7 +282,10 @@ export function EmployeeForm({
             <Input
               id="guarantor_name"
               name="guarantor_name"
-              defaultValue={employee?.guarantor_name ?? ""}
+              value={fields.guarantor_name}
+              onChange={(event) =>
+                updateField("guarantor_name", event.target.value)
+              }
             />
           </div>
           <div className="space-y-2">
@@ -213,7 +293,10 @@ export function EmployeeForm({
             <Input
               id="guarantor_phone"
               name="guarantor_phone"
-              defaultValue={employee?.guarantor_phone ?? ""}
+              value={fields.guarantor_phone}
+              onChange={(event) =>
+                updateField("guarantor_phone", event.target.value)
+              }
             />
           </div>
           <div className="space-y-2 md:col-span-2">
@@ -221,23 +304,12 @@ export function EmployeeForm({
             <Input
               id="guarantor_address"
               name="guarantor_address"
-              defaultValue={employee?.guarantor_address ?? ""}
+              value={fields.guarantor_address}
+              onChange={(event) =>
+                updateField("guarantor_address", event.target.value)
+              }
             />
           </div>
-        </div>
-      </section>
-
-      <section className="space-y-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          Documents
-        </h2>
-        <div className="rounded-lg border border-dashed bg-muted/20 px-4 py-4 text-sm text-muted-foreground">
-          <p className="font-medium text-foreground">Uploads coming next</p>
-          <p className="mt-1">
-            CV, employment letter, and ID document uploads are planned for the
-            next HR update (before Phase 2). The database is already prepared
-            for these files.
-          </p>
         </div>
       </section>
 

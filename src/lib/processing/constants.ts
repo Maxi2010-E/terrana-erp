@@ -1,5 +1,7 @@
 export const PROCESSING_SESSION_STATUSES = [
   "pending_approval",
+  "pending_second_approval",
+  "pending_admin_approval",
   "in_progress",
   "completed",
   "rejected",
@@ -9,6 +11,8 @@ export type ProcessingSessionStatus =
 
 export const ACTIVE_PROCESSING_SESSION_STATUSES = [
   "pending_approval",
+  "pending_second_approval",
+  "pending_admin_approval",
   "in_progress",
   "completed",
 ] as const;
@@ -25,7 +29,9 @@ export const PROCESSING_SESSION_STATUS_LABELS: Record<
   ProcessingSessionStatus,
   string
 > = {
-  pending_approval: "Pending approval",
+  pending_approval: "Awaiting 1st review",
+  pending_second_approval: "Awaiting 2nd review",
+  pending_admin_approval: "Awaiting admin",
   in_progress: "In progress",
   completed: "Completed",
   rejected: "Rejected",

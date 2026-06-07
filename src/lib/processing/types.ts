@@ -60,8 +60,12 @@ export type ProcessingSessionDetail = {
   processed_by_label: string | null;
   notes: string | null;
   completed_at: string | null;
+  approved_by: string | null;
   approved_at: string | null;
+  approved_by_name: string | null;
+  rejected_by: string | null;
   rejected_at: string | null;
+  rejected_by_name: string | null;
   created_at: string;
   output: {
     bags_produced: number;

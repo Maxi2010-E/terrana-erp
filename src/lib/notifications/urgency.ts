@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-export type NotificationUrgency = "urgent" | "awareness";
+export type NotificationUrgency = "urgent" | "awareness" | "ready";
 
 /** Explicit hex colors — default Tailwind red/amber scales are not in our @theme. */
 export const notificationColors = {
@@ -14,6 +14,11 @@ export const notificationColors = {
     foreground: "#1c1408",
     activeRing: "rgba(255, 255, 255, 0.8)",
   },
+  ready: {
+    background: "#16a34a",
+    foreground: "#ffffff",
+    activeRing: "rgba(255, 255, 255, 0.8)",
+  },
 } as const;
 
 export function notificationBadgeClassName(): string {
@@ -24,8 +29,7 @@ export function notificationBadgeStyle(
   urgency: NotificationUrgency,
   isActive: boolean,
 ): CSSProperties {
-  const colors =
-    notificationColors[urgency === "urgent" ? "urgent" : "awareness"];
+  const colors = notificationColors[urgency];
 
   return {
     backgroundColor: colors.background,
@@ -38,18 +42,22 @@ export function notificationBannerClassName(
   urgency: NotificationUrgency,
 ): string {
   if (urgency === "urgent") {
-    return "rounded-xl border px-4 py-3 text-sm border-[#dc2626]/35 bg-[#dc2626]/10 text-[#7f1d1d] dark:text-[#fecaca]";
+    return "notification-banner-urgent";
   }
-
-  return "rounded-xl border px-4 py-3 text-sm border-[#f59e0b]/35 bg-[#f59e0b]/10 text-[#78350f] dark:text-[#fde68a]";
+  if (urgency === "ready") {
+    return "notification-banner-ready";
+  }
+  return "notification-banner-awareness";
 }
 
 export function notificationCardClassName(
   urgency: NotificationUrgency,
 ): string {
   if (urgency === "urgent") {
-    return "rounded-2xl border shadow-sm border-[#dc2626]/45 dark:border-[#dc2626]/50";
+    return "notification-card-urgent";
   }
-
-  return "rounded-2xl border shadow-sm border-[#f59e0b]/45 dark:border-[#f59e0b]/40";
+  if (urgency === "ready") {
+    return "notification-card-ready";
+  }
+  return "notification-card-awareness";
 }

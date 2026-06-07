@@ -1,11 +1,12 @@
+import { PreStockSourceLinks } from "@/components/inventory/pre-stock-source-links";
 import { ProductTypeBadge } from "@/components/procurement/product-type-badge";
 import { InventoryStatusBadge } from "@/components/inventory/inventory-status-badge";
+import { TableViewAction } from "@/components/ui/table-view-action";
 import {
   formatPreStockNumber,
 } from "@/lib/inventory/inventory-number";
 import type { InventoryStatus } from "@/lib/inventory/constants";
 import type { PreStockListRow } from "@/lib/inventory/types";
-import Link from "next/link";
 
 type PreStockTableProps = {
   rows: PreStockListRow[];
@@ -28,13 +29,14 @@ export function PreStockTable({ rows }: PreStockTableProps) {
             <th className={`${HEAD_CELL} min-w-[4.5rem]`}>KG</th>
             <th className={`${HEAD_CELL} min-w-[6.5rem]`}>Received</th>
             <th className={`${HEAD_CELL} min-w-[7rem]`}>Status</th>
+            <th className={`${HEAD_CELL} min-w-[5rem]`}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {rows.length === 0 ? (
             <tr>
               <td
-                colSpan={7}
+                colSpan={8}
                 className="px-4 py-12 text-center text-muted-foreground"
               >
                 No pre-stock records yet. Complete processing or approve clean
@@ -51,16 +53,7 @@ export function PreStockTable({ rows }: PreStockTableProps) {
                   {formatPreStockNumber(row.pre_stock_number)}
                 </td>
                 <td className={BODY_CELL}>
-                  {row.source_href ? (
-                    <Link
-                      href={row.source_href}
-                      className="text-primary hover:underline"
-                    >
-                      {row.source_label}
-                    </Link>
-                  ) : (
-                    row.source_label
-                  )}
+                  <PreStockSourceLinks links={row.source_links} />
                 </td>
                 <td className={BODY_CELL}>
                   <ProductTypeBadge productType={row.product_type} />
@@ -81,6 +74,9 @@ export function PreStockTable({ rows }: PreStockTableProps) {
                   <InventoryStatusBadge
                     status={row.status as InventoryStatus}
                   />
+                </td>
+                <td className={BODY_CELL}>
+                  <TableViewAction href={`/inventory/pre-stock/${row.id}`} />
                 </td>
               </tr>
             ))

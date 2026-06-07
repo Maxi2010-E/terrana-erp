@@ -1,5 +1,20 @@
-import { ModulePlaceholder } from "@/components/layout/module-placeholder";
+import { redirect } from "next/navigation";
 
-export default function Page() {
-  return <ModulePlaceholder title="Customers" phase={8} />;
+import { buildLogisticsHubRedirect } from "@/lib/logistics/redirect";
+
+type CustomersRedirectProps = {
+  searchParams: Promise<{ page?: string; q?: string; message?: string }>;
+};
+
+export default async function CustomersPage({
+  searchParams,
+}: CustomersRedirectProps) {
+  const params = await searchParams;
+  redirect(
+    buildLogisticsHubRedirect("customers", {
+      page: params.page,
+      q: params.q,
+      message: params.message,
+    }),
+  );
 }

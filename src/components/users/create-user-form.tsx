@@ -77,7 +77,7 @@ export function CreateUserForm({ action, employees }: CreateUserFormProps) {
         </div>
         <div className="space-y-2">
           <Label htmlFor="role">Role</Label>
-          <select id="role" name="role" defaultValue="accounts" className={selectClassName}>
+          <select id="role" name="role" defaultValue="warehouse_manager" className={selectClassName}>
             {APP_ROLES.filter((role) => role !== "super_admin").map((role) => (
               <option key={role} value={role}>
                 {ROLE_LABELS[role]}

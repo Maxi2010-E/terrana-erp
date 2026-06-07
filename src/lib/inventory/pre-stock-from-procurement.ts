@@ -32,6 +32,14 @@ export async function ensurePreStockFromProcurementBatch(
     return { created: false };
   }
 
+  if (batch.number_of_bags <= 0 || batch.total_kg <= 0) {
+    return {
+      created: false,
+      error:
+        "Cannot create pre-stock: batch must have bags and total KG greater than zero.",
+    };
+  }
+
   const { data: preStockNumber, error: numberError } =
     await supabase.rpc("generate_pre_stock_number");
 

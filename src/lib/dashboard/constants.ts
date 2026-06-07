@@ -1,0 +1,3 @@
+export const DASHBOARD_TREND_MONTHS = 6;
+export const DASHBOARD_RECENT_LIMIT = 5;
+export const DASHBOARD_CACHE_SECONDS = 30;

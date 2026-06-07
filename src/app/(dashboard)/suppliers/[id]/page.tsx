@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { SupplierDetailTabs } from "@/components/suppliers/supplier-detail-tabs";
 import { SupplierStatusBadge } from "@/components/suppliers/supplier-status-badge";
+import { PageHeader } from "@/components/layout/page-header";
 import { LinkButton } from "@/components/ui/link-button";
 import {
   addBankAccount,
@@ -11,8 +12,11 @@ import {
   updateSupplier,
 } from "@/lib/actions/suppliers";
 import { getProcurementsBySupplierId } from "@/lib/actions/procurement";
+import { getPaymentsForSupplier } from "@/lib/actions/payments";
 import { canViewProcurementPricing } from "@/lib/procurement/permissions";
+import { canApprovePayment } from "@/lib/payments/permissions";
 import { requireSupplierRead } from "@/lib/auth/require-role";
+import { canAccessModule } from "@/lib/permissions/matrix";
 import type { SupplierStatus } from "@/lib/suppliers/constants";
 import type { Supplier } from "@/lib/suppliers/types";
 
@@ -25,11 +29,14 @@ export default async function SupplierDetailPage({
 }: SupplierDetailPageProps) {
   const { role } = await requireSupplierRead();
   const canEdit = role === "super_admin" || role === "admin";
+  const canApprovePayments = canApprovePayment(role);
   const showProcurementPricing = canViewProcurementPricing(role);
+  const showPaymentsTab = canAccessModule(role, "payments");
   const { id } = await params;
-  const [{ supplier, bankAccounts }, procurements] = await Promise.all([
+  const [{ supplier, bankAccounts }, procurements, payments] = await Promise.all([
     getSupplierById(id),
     getProcurementsBySupplierId(id),
+    showPaymentsTab ? getPaymentsForSupplier(id) : Promise.resolve([]),
   ]);
 
   if (!supplier) {
@@ -38,32 +45,27 @@ export default async function SupplierDetailPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {supplier.supplier_name}
-            </h1>
-            <SupplierStatusBadge
-              status={supplier.status as SupplierStatus}
-            />
-          </div>
-          <p className="text-sm text-muted-foreground">
-            {supplier.supplier_code}
-            {supplier.phone ? ` · ${supplier.phone}` : ""}
-          </p>
-        </div>
-        <LinkButton variant="outline" href="/suppliers">
-          Back to list
-        </LinkButton>
-      </div>
+      <PageHeader
+        title={supplier.supplier_name}
+        meta={`${supplier.supplier_code}${supplier.phone ? ` · ${supplier.phone}` : ""}`}
+        actions={
+          <LinkButton variant="outline" href="/suppliers">
+            Back to list
+          </LinkButton>
+        }
+      />
+
+      <SupplierStatusBadge status={supplier.status as SupplierStatus} />
 
       <SupplierDetailTabs
         supplier={supplier as Supplier}
         bankAccounts={bankAccounts}
         procurements={procurements}
+        payments={payments}
         showProcurementPricing={showProcurementPricing}
         canEdit={canEdit}
+        canApprovePayments={canApprovePayments}
+        showPaymentsTab={showPaymentsTab}
         updateAction={updateSupplier}
         addBankAction={addBankAccount}
         deleteBankAction={deleteBankAccount}

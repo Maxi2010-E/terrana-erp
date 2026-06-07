@@ -1,20 +1,20 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { GradingVarianceAlerts } from "@/components/inventory/grading-variance-alerts";
+import { PreStockSourceLinks } from "@/components/inventory/pre-stock-source-links";
 import { InventoryStatusBadge } from "@/components/inventory/inventory-status-badge";
 import { ProductTypeBadge } from "@/components/procurement/product-type-badge";
 import { LinkButton } from "@/components/ui/link-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getInventoryBatchById } from "@/lib/actions/inventory";
 import { requireInventoryRead } from "@/lib/auth/require-role";
+import type { InventoryStatus } from "@/lib/inventory/constants";
+import { EXPORT_STANDARD_KG_PER_BAG } from "@/lib/inventory/grading-variance";
 import {
   formatInventoryNumber,
   formatPreStockNumber,
 } from "@/lib/inventory/inventory-number";
-import { GradingVarianceAlerts } from "@/components/inventory/grading-variance-alerts";
-import { EXPORT_STANDARD_KG_PER_BAG } from "@/lib/inventory/grading-variance";
-import type { InventoryStatus } from "@/lib/inventory/constants";
 
 type ExportInventoryDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -58,7 +58,7 @@ export default async function ExportInventoryDetailPage({
             {batch.total_kg.toLocaleString()} kg
           </p>
         </div>
-        <LinkButton variant="outline" href="/inventory/export">
+        <LinkButton variant="outline" href="/inventory?tab=export">
           Back to export inventory
         </LinkButton>
       </div>
@@ -198,16 +198,7 @@ export default async function ExportInventoryDetailPage({
                       />
                     </td>
                     <td className="px-4 py-4">
-                      {source.source_href ? (
-                        <Link
-                          href={source.source_href}
-                          className="text-primary hover:underline"
-                        >
-                          {source.source_label}
-                        </Link>
-                      ) : (
-                        source.source_label
-                      )}
+                      <PreStockSourceLinks links={source.source_links} />
                     </td>
                     <td className="px-4 py-4 tabular-nums">
                       {source.bags.toLocaleString()}

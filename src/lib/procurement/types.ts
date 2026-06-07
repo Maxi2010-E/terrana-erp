@@ -33,7 +33,9 @@ export type ProcurementBatch = {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  approved_by: string | null;
   approved_at: string | null;
+  approved_by_name?: string | null;
   supplier_name?: string;
   supplier_code?: string;
 };

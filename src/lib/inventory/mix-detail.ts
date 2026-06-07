@@ -1,4 +1,3 @@
-import { formatPreStockNumber } from "@/lib/inventory/inventory-number";
 import type {
   InventoryMixSourceLine,
   InventoryMixSummary,

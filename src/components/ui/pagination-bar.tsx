@@ -65,6 +65,7 @@ export function PaginationBar({
         ) : (
           <Link
             href={prevHref}
+            prefetch={false}
             className={buttonVariants({ variant: "outline", size: "sm" })}
           >
             <ChevronLeft className="size-4" />
@@ -87,6 +88,7 @@ export function PaginationBar({
         ) : (
           <Link
             href={nextHref}
+            prefetch={false}
             className={buttonVariants({ variant: "outline", size: "sm" })}
           >
             Next

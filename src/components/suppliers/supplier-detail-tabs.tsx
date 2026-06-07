@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 
+import { SupplierPaymentsPanel } from "@/components/payments/supplier-payments-panel";
 import { SupplierProcurementsPanel } from "@/components/procurement/supplier-procurements-panel";
 import { SupplierBankAccountsPanel } from "@/components/suppliers/supplier-bank-accounts-panel";
+import { SupplierOverviewDisplay } from "@/components/suppliers/supplier-overview-display";
 import { SupplierOverviewForm } from "@/components/suppliers/supplier-overview-form";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type {
   BankAccountFormState,
@@ -16,6 +19,7 @@ import {
   type SupplierTab,
 } from "@/lib/suppliers/constants";
 import type { Supplier, SupplierBankAccount } from "@/lib/suppliers/types";
+import type { SupplierPaymentRow } from "@/lib/payments/types";
 import type {
   PaymentStatus,
   ProcurementStatus,
@@ -40,8 +44,11 @@ type SupplierDetailTabsProps = {
   supplier: Supplier;
   bankAccounts: SupplierBankAccount[];
   procurements: SupplierProcurementRow[];
+  payments: SupplierPaymentRow[];
   showProcurementPricing: boolean;
   canEdit: boolean;
+  canApprovePayments?: boolean;
+  showPaymentsTab?: boolean;
   updateAction: (
     supplierId: string,
     state: SupplierFormState,
@@ -72,24 +79,36 @@ export function SupplierDetailTabs({
   supplier,
   bankAccounts,
   procurements,
+  payments,
   showProcurementPricing,
   canEdit,
+  canApprovePayments = false,
+  showPaymentsTab = true,
   updateAction,
   addBankAction,
   deleteBankAction,
   setPrimaryBankAction,
 }: SupplierDetailTabsProps) {
   const [activeTab, setActiveTab] = useState<SupplierTab>("overview");
+  const [editingOverview, setEditingOverview] = useState(false);
+  const [addingBankAccount, setAddingBankAccount] = useState(false);
   const boundUpdateAction = updateAction.bind(null, supplier.id);
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2 border-b pb-2">
-        {SUPPLIER_TABS.map((tab) => (
+        {SUPPLIER_TABS.filter(
+          (tab) => showPaymentsTab || tab !== "payments",
+        ).map((tab) => (
           <button
             key={tab}
             type="button"
-            onClick={() => setActiveTab(tab)}
+            onClick={() => {
+              setActiveTab(tab);
+              if (tab !== "bank") {
+                setAddingBankAccount(false);
+              }
+            }}
             className={cn(
               "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
               activeTab === tab
@@ -104,29 +123,56 @@ export function SupplierDetailTabs({
 
       {activeTab === "overview" ? (
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between gap-4">
             <CardTitle className="text-base">Overview</CardTitle>
+            {canEdit && !editingOverview ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setEditingOverview(true)}
+              >
+                Edit details
+              </Button>
+            ) : null}
           </CardHeader>
           <CardContent>
-            <SupplierOverviewForm
-              action={boundUpdateAction}
-              supplier={supplier}
-              readOnly={!canEdit}
-            />
+            {canEdit && editingOverview ? (
+              <SupplierOverviewForm
+                action={boundUpdateAction}
+                supplier={supplier}
+                onCancel={() => setEditingOverview(false)}
+                onSaved={() => setEditingOverview(false)}
+              />
+            ) : (
+              <SupplierOverviewDisplay supplier={supplier} />
+            )}
           </CardContent>
         </Card>
       ) : null}
 
       {activeTab === "bank" ? (
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between gap-4">
             <CardTitle className="text-base">Bank accounts</CardTitle>
+            {canEdit && !addingBankAccount ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setAddingBankAccount(true)}
+              >
+                Add bank account
+              </Button>
+            ) : null}
           </CardHeader>
           <CardContent>
             <SupplierBankAccountsPanel
               supplierId={supplier.id}
               bankAccounts={bankAccounts}
               canEdit={canEdit}
+              adding={addingBankAccount}
+              onAddingChange={setAddingBankAccount}
               addAction={addBankAction}
               deleteAction={deleteBankAction}
               setPrimaryAction={setPrimaryBankAction}
@@ -150,11 +196,21 @@ export function SupplierDetailTabs({
       ) : null}
 
       {activeTab === "payments" ? (
-        <PlaceholderPanel title="Payments" phase="Phase 6" />
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Payments</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SupplierPaymentsPanel
+              rows={payments}
+              canApprove={canApprovePayments}
+            />
+          </CardContent>
+        </Card>
       ) : null}
 
       {activeTab === "analytics" ? (
-        <PlaceholderPanel title="Analytics" phase="Phase 9" />
+        <PlaceholderPanel title="Analytics" phase="Phase 9 — see Reports" />
       ) : null}
     </div>
   );

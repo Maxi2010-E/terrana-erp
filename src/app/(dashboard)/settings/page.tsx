@@ -1,3 +1,5 @@
+import { PageHeader } from "@/components/layout/page-header";
+import { FacilityGeofenceForm } from "@/components/settings/facility-geofence-form";
 import {
   Card,
   CardContent,
@@ -5,19 +7,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ModulePlaceholder } from "@/components/layout/module-placeholder";
+import { getFacilityGeofenceSettings } from "@/lib/actions/office";
 import { requireRole } from "@/lib/auth/require-role";
 
 export default async function SettingsPage() {
   await requireRole(["super_admin", "admin"]);
+  const geofence = await getFacilityGeofenceSettings();
 
   return (
     <div className="space-y-6">
-      <ModulePlaceholder
+      <PageHeader
         title="Settings"
-        description="Company settings and system configuration. Full settings UI expands in later phases."
+        description="Company configuration and attendance geofence."
       />
-      <Card>
+
+      <Card className="rounded-2xl shadow-sm">
         <CardHeader>
           <CardTitle>Company</CardTitle>
           <CardDescription>Default values from Phase 0 migration</CardDescription>
@@ -27,6 +31,8 @@ export default async function SettingsPage() {
           <p>Currency: NGN</p>
         </CardContent>
       </Card>
+
+      <FacilityGeofenceForm settings={geofence} />
     </div>
   );
 }

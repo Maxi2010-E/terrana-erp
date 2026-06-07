@@ -1,0 +1,170 @@
+/**
+ * Sidebar navigation — plain CSS so nav links/active/hover cannot break via Tailwind HMR.
+ * Imported after terrana-dashboard-shell.css in root layout.
+ */
+
+:root {
+  --terrana-brand: #a04312;
+  --terrana-brand-fg: #fff8f4;
+  --terrana-sidebar-hover: #3a3d44;
+  --terrana-sidebar-muted: #9a9ea8;
+}
+
+[data-layout="dashboard-sidebar"] > * {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  width: 100% !important;
+}
+
+[data-layout="sidebar-brand"] {
+  flex-shrink: 0 !important;
+  border-bottom: 1px solid var(--terrana-sidebar-border) !important;
+  padding: 1.25rem 1rem !important;
+}
+
+[data-layout="sidebar-brand-mark"] {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+}
+
+[data-layout="sidebar-brand-icon"] {
+  display: flex !important;
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  flex-shrink: 0 !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 0.75rem !important;
+  background-color: var(--terrana-brand) !important;
+  color: var(--terrana-brand-fg) !important;
+  font-size: 0.875rem !important;
+  font-weight: 700 !important;
+}
+
+[data-layout="sidebar-brand-title"] {
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  line-height: 1.25 !important;
+}
+
+[data-layout="sidebar-brand-subtitle"] {
+  font-size: 0.75rem !important;
+  line-height: 1.25 !important;
+  color: var(--terrana-sidebar-muted) !important;
+}
+
+[data-layout="sidebar-nav-scroll"] {
+  padding: 0.75rem !important;
+}
+
+[data-nav-root] {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.25rem !important;
+}
+
+[data-nav-section] {
+  margin: 0 !important;
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.6875rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  color: var(--terrana-sidebar-muted) !important;
+}
+
+[data-nav-link] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 0.5rem !important;
+  border-radius: 9999px !important;
+  padding: 0.625rem 0.75rem !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25 !important;
+  text-decoration: none !important;
+  color: inherit !important;
+  transition: background-color 0.15s ease !important;
+}
+
+[data-nav-link]:not([data-nav-active="true"]):hover {
+  background-color: var(--terrana-sidebar-hover) !important;
+}
+
+[data-nav-link][data-nav-active="true"] {
+  background-color: var(--terrana-brand) !important;
+  color: var(--terrana-brand-fg) !important;
+}
+
+[data-nav-link-label] {
+  display: flex !important;
+  min-width: 0 !important;
+  align-items: center !important;
+  gap: 0.625rem !important;
+}
+
+[data-nav-link-label] svg {
+  width: 1rem !important;
+  height: 1rem !important;
+  flex-shrink: 0 !important;
+  opacity: 0.9 !important;
+}
+
+[data-layout="sidebar-user"] {
+  border-top: 1px solid var(--terrana-sidebar-border) !important;
+  padding: 1rem !important;
+}
+
+[data-layout="sidebar-user-card"] {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.75rem !important;
+  border-radius: 0.75rem !important;
+  padding: 0.5rem !important;
+  background-color: var(--terrana-sidebar-hover) !important;
+}
+
+[data-layout="sidebar-user-profile"] {
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+}
+
+[data-layout="sidebar-user-avatar"] {
+  display: flex !important;
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  flex-shrink: 0 !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 9999px !important;
+  background-color: var(--terrana-brand) !important;
+  color: var(--terrana-brand-fg) !important;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+}
+
+[data-layout="sidebar-user-name"] {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: 0.875rem !important;
+  font-weight: 500 !important;
+}
+
+[data-layout="sidebar-user-role"] {
+  min-width: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: 0.75rem !important;
+  text-transform: capitalize !important;
+  color: var(--terrana-sidebar-muted) !important;
+}
+
+[data-nav-mobile-bar] {
+  border-bottom: 1px solid var(--terrana-sidebar-border) !important;
+  padding: 0.75rem !important;
+}

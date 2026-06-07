@@ -1,5 +1,17 @@
-import { ModulePlaceholder } from "@/components/layout/module-placeholder";
+import { redirect } from "next/navigation";
 
-export default function Page() {
-  return <ModulePlaceholder title="Bonuses" phase={1} />;
+import { buildHrHubRedirect } from "@/lib/hr/redirect";
+
+type BonusesRedirectProps = {
+  searchParams: Promise<{ month?: string; q?: string }>;
+};
+
+export default async function BonusesPage({ searchParams }: BonusesRedirectProps) {
+  const params = await searchParams;
+  redirect(
+    buildHrHubRedirect("bonuses", {
+      month: params.month,
+      q: params.q,
+    }),
+  );
 }

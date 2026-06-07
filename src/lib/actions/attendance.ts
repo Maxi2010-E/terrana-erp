@@ -1,32 +1,14 @@
 "use server";
 
+import { recordLoginSessionLegacy } from "@/lib/auth/record-login-session";
 import { createClient } from "@/lib/supabase/server";
 
 export async function recordLoginAttendance() {
   try {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return;
-    }
-
-    const now = new Date();
-    const attendanceDate = now.toISOString().slice(0, 10);
-
-    await supabase.from("attendance").insert({
-      user_id: user.id,
-      login_time: now.toISOString(),
-      attendance_date: attendanceDate,
-    });
-
-    await supabase.rpc("update_own_last_login", {
-      login_time: now.toISOString(),
-    });
+    await recordLoginSessionLegacy(supabase);
   } catch {
-    // Attendance must never block login.
+    // OAuth login without geo — attendance marked invalid; must not block login.
   }
 }
 

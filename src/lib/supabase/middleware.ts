@@ -23,7 +23,6 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Anonymous visitors on login/auth — skip Supabase entirely (fast retries).
   if (!hasSessionCookie && isPublicRoute) {
     return NextResponse.next({ request });
   }
@@ -33,6 +32,11 @@ export async function updateSession(request: NextRequest) {
     redirectUrl.pathname = "/login";
     redirectUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(redirectUrl);
+  }
+
+  // Logged-in users on protected routes — skip remote auth here; layout refreshes via getSessionUser().
+  if (hasSessionCookie && !isPublicRoute) {
+    return NextResponse.next({ request });
   }
 
   let supabaseResponse = NextResponse.next({ request });
@@ -63,27 +67,16 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  if (hasSessionCookie) {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    const user = session?.user ?? null;
-
-    if (user && isLoginPage) {
-      const redirectParam = request.nextUrl.searchParams.get("redirect");
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = safeRedirectPath(redirectParam);
-      redirectUrl.search = "";
-      return NextResponse.redirect(redirectUrl);
-    }
-
-    if (!user && !isPublicRoute) {
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = "/login";
-      redirectUrl.searchParams.set("redirect", pathname);
-      return NextResponse.redirect(redirectUrl);
-    }
+  if (user && isLoginPage) {
+    const redirectParam = request.nextUrl.searchParams.get("redirect");
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = safeRedirectPath(redirectParam);
+    redirectUrl.search = "";
+    return NextResponse.redirect(redirectUrl);
   }
 
   return supabaseResponse;

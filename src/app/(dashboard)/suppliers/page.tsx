@@ -1,16 +1,21 @@
-import Link from "next/link";
-
 import { SupplierStatusBadge } from "@/components/suppliers/supplier-status-badge";
+import { PageHeader } from "@/components/layout/page-header";
+import { SuccessFlash } from "@/components/layout/success-flash";
 import { LinkButton } from "@/components/ui/link-button";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { PaginationBar } from "@/components/ui/pagination-bar";
+import { TableViewAction } from "@/components/ui/table-view-action";
 import {
   getSuppliersList,
   updateSupplierStatus,
 } from "@/lib/actions/suppliers";
 import { getSupplierProcurementCounts } from "@/lib/actions/procurement";
+import { getSupplierOutstandingTotals } from "@/lib/actions/payments";
 import { requireSupplierRead } from "@/lib/auth/require-role";
+import { formatMoneyIfAllowed } from "@/lib/currency";
+import { canAccessModule } from "@/lib/permissions/matrix";
+import { canViewPaymentAmounts } from "@/lib/payments/permissions";
 import type { SupplierStatus } from "@/lib/suppliers/constants";
 
 type SuppliersPageProps = {
@@ -30,17 +35,37 @@ function successMessage(message: string | undefined): string | null {
   return null;
 }
 
+function recordLabel(total: number): string {
+  if (total === 0) {
+    return "No suppliers yet";
+  }
+  if (total === 1) {
+    return "1 supplier";
+  }
+  return `${total.toLocaleString()} suppliers`;
+}
+
+const HEAD_CELL =
+  "px-4 pb-3 pt-1 text-left text-xs font-medium tracking-wide uppercase";
+const BODY_CELL = "px-4 py-4 align-middle leading-normal";
+
 export default async function SuppliersPage({ searchParams }: SuppliersPageProps) {
   const { role } = await requireSupplierRead();
   const canEdit = role === "super_admin" || role === "admin";
+  const showOutstanding = canAccessModule(role, "payments");
+  const showPaymentAmounts = canViewPaymentAmounts(role);
   const params = await searchParams;
   const page = Math.max(1, Number.parseInt(params.page ?? "1", 10) || 1);
   const query = params.q ?? "";
   const flash = successMessage(params.message);
   const { rows, total } = await getSuppliersList(page, query);
-  const procurementCounts = await getSupplierProcurementCounts(
-    rows.map((supplier) => supplier.id),
-  );
+  const supplierIds = rows.map((supplier) => supplier.id);
+  const [procurementCounts, outstandingTotals] = await Promise.all([
+    getSupplierProcurementCounts(supplierIds),
+    showOutstanding
+      ? getSupplierOutstandingTotals(supplierIds)
+      : Promise.resolve({} as Record<string, number>),
+  ]);
 
   async function toggleSupplierStatus(formData: FormData) {
     "use server";
@@ -51,54 +76,45 @@ export default async function SuppliersPage({ searchParams }: SuppliersPageProps
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Suppliers</h1>
-          <p className="text-sm text-muted-foreground">
-            Supplier master records — no deletes, status changes only.
-          </p>
-        </div>
-        {canEdit ? (
-          <LinkButton href="/suppliers/new">Add supplier</LinkButton>
-        ) : null}
-      </div>
+      <PageHeader
+        title="Suppliers"
+        description="Supplier master records — no deletes, status changes only."
+        meta={recordLabel(total)}
+        actions={
+          canEdit ? (
+            <LinkButton href="/suppliers/new">Add supplier</LinkButton>
+          ) : null
+        }
+      />
 
-      {flash ? (
-        <p
-          className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-200"
-          role="status"
-        >
-          {flash}
-        </p>
-      ) : null}
+      {flash ? <SuccessFlash message={flash} /> : null}
 
-      <Card>
-        <CardHeader className="gap-4 pb-4">
-          <CardTitle className="text-base">Supplier list</CardTitle>
+      <Card className="rounded-2xl shadow-sm">
+        <CardHeader className="gap-4 border-b border-border/60 pb-4">
           <form className="flex max-w-md gap-2" method="get">
             <input
               name="q"
               defaultValue={query}
               placeholder="Search by name, ID, phone…"
-              className="flex h-8 flex-1 rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="flex h-10 flex-1 rounded-xl border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             />
-            <Button type="submit" variant="outline" size="sm">
+            <Button type="submit" variant="outline">
               Search
             </Button>
           </form>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-5 px-4 pb-6 pt-5">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[880px] text-left text-sm">
+            <table className="w-full min-w-[880px] border-collapse text-left text-sm">
               <thead>
-                <tr className="border-b text-muted-foreground">
-                  <th className="pb-3 pr-4 font-medium">Supplier ID</th>
-                  <th className="pb-3 pr-4 font-medium">Name</th>
-                  <th className="pb-3 pr-4 font-medium">Status</th>
-                  <th className="pb-3 pr-4 font-medium">Phone</th>
-                  <th className="pb-3 pr-4 font-medium">Procurements</th>
-                  <th className="pb-3 pr-4 font-medium">Outstanding</th>
-                  <th className="pb-3 font-medium">Actions</th>
+                <tr className="border-b border-border/60 text-muted-foreground">
+                  <th className={HEAD_CELL}>Supplier ID</th>
+                  <th className={HEAD_CELL}>Name</th>
+                  <th className={HEAD_CELL}>Status</th>
+                  <th className={HEAD_CELL}>Phone</th>
+                  <th className={HEAD_CELL}>Procurements</th>
+                  <th className={HEAD_CELL}>Outstanding</th>
+                  <th className={HEAD_CELL}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -106,7 +122,7 @@ export default async function SuppliersPage({ searchParams }: SuppliersPageProps
                   <tr>
                     <td
                       colSpan={7}
-                      className="py-8 text-center text-muted-foreground"
+                      className="px-4 py-12 text-center text-muted-foreground"
                     >
                       No suppliers found.
                     </td>
@@ -116,29 +132,32 @@ export default async function SuppliersPage({ searchParams }: SuppliersPageProps
                     const isActive = supplier.status === "active";
 
                     return (
-                      <tr key={supplier.id} className="border-b last:border-0">
-                        <td className="py-3 pr-4 font-medium">
+                      <tr
+                        key={supplier.id}
+                        className="border-b border-border/50 last:border-0"
+                      >
+                        <td className={`${BODY_CELL} font-medium`}>
                           {supplier.supplier_code}
                         </td>
-                        <td className="py-3 pr-4">{supplier.supplier_name}</td>
-                        <td className="py-3 pr-4">
+                        <td className={BODY_CELL}>{supplier.supplier_name}</td>
+                        <td className={BODY_CELL}>
                           <SupplierStatusBadge
                             status={supplier.status as SupplierStatus}
                           />
                         </td>
-                        <td className="py-3 pr-4">{supplier.phone ?? "—"}</td>
-                        <td className="py-3 pr-4">
+                        <td className={BODY_CELL}>{supplier.phone ?? "—"}</td>
+                        <td className={BODY_CELL}>
                           {procurementCounts[supplier.id] ?? 0}
                         </td>
-                        <td className="py-3 pr-4 text-muted-foreground">—</td>
-                        <td className="py-3">
+                        <td className={BODY_CELL}>
+                          {formatMoneyIfAllowed(
+                            outstandingTotals[supplier.id] ?? null,
+                            showPaymentAmounts,
+                          )}
+                        </td>
+                        <td className={BODY_CELL}>
                           <div className="flex flex-wrap gap-2">
-                            <Link
-                              href={`/suppliers/${supplier.id}`}
-                              className="inline-flex h-7 items-center rounded-lg border border-border bg-background px-2.5 text-xs font-medium hover:bg-muted"
-                            >
-                              View
-                            </Link>
+                            <TableViewAction href={`/suppliers/${supplier.id}`} />
                             {canEdit ? (
                               <form action={toggleSupplierStatus}>
                                 <input

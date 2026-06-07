@@ -36,7 +36,7 @@ export function processingSidebarBadges(
 
   let pending = notifications.submittedPending;
 
-  if (role === "inventory_manager") {
+  if (role === "warehouse_manager") {
     pending += notifications.batchesWaiting;
   }
 
@@ -90,7 +90,7 @@ export function formatProcessingSidebarTitle(
       );
 
       if (
-        role === "inventory_manager" &&
+        role === "warehouse_manager" &&
         notifications.batchesWaiting > 0 &&
         notifications.submittedPending !== badges.pending
       ) {
@@ -122,6 +122,16 @@ export function formatProcessingSubmittedPendingBanner(
   return count === 1
     ? "You have 1 processing request waiting for admin approval."
     : `You have ${count.toLocaleString()} processing requests waiting for admin approval.`;
+}
+
+export function formatProcessingUrgentBanner(count: number): string | null {
+  if (count <= 0) {
+    return null;
+  }
+
+  return count === 1
+    ? "1 processing request is awaiting your approval — work cannot start until you approve."
+    : `${count.toLocaleString()} processing requests are awaiting your approval — work cannot start until you approve them.`;
 }
 
 export function canReceiveProcessingQueueNotifications(role: AppRole): boolean {

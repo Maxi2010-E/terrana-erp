@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useMemo, useState } from "react";
 
 import { GradingVarianceAlerts } from "@/components/inventory/grading-variance-alerts";
+import {
+  PreStockSourceLinksText,
+} from "@/components/inventory/pre-stock-source-links";
 import { ProductTypeBadge } from "@/components/procurement/product-type-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -141,7 +144,9 @@ export function CreateInventoryForm({ options }: CreateInventoryFormProps) {
 
   useEffect(() => {
     if (state.success && state.batchId) {
-      router.push(`/inventory/export/${state.batchId}?message=created`);
+      router.push(
+        `/inventory/export/${state.batchId}?message=created`,
+      );
       router.refresh();
     }
   }, [state.success, state.batchId, router]);
@@ -268,7 +273,9 @@ export function CreateInventoryForm({ options }: CreateInventoryFormProps) {
                     <td className="px-4 py-3 font-medium tabular-nums">
                       {formatPreStockNumber(option.pre_stock_number)}
                     </td>
-                    <td className="px-4 py-3">{option.source_label}</td>
+                    <td className="px-4 py-3">
+                      <PreStockSourceLinksText links={option.source_links} />
+                    </td>
                     <td className="px-4 py-3">
                       <ProductTypeBadge productType={option.product_type} />
                     </td>

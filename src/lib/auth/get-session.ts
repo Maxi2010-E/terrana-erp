@@ -2,7 +2,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
-import type { AppRole } from "@/lib/roles";
+import { normalizeAppRole, type AppRole } from "@/lib/roles";
 
 export type AppUser = {
   id: string;
@@ -38,6 +38,11 @@ export const getSessionUser = cache(async (): Promise<{
 
   return {
     authUser: { id: user.id, email: user.email },
-    appUser: appUser as AppUser | null,
+    appUser: appUser
+      ? {
+          ...appUser,
+          role: normalizeAppRole(appUser.role),
+        }
+      : null,
   };
 });

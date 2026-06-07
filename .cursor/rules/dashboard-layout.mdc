@@ -1,0 +1,30 @@
+---
+description: Dashboard shell layout — do not break sidebar/main scroll
+alwaysApply: false
+globs: src/components/layout/**,src/app/**/layout.tsx,src/app/layout.tsx,src/styles/terrana-dashboard-shell.css
+---
+
+# Dashboard layout (do not break)
+
+The sidebar shell lives in **[`terrana-dashboard-shell.css`](src/styles/terrana-dashboard-shell.css)** (imported after `globals.css` in root [`layout.tsx`](src/app/layout.tsx)) and **[`dashboard-shell.tsx`](src/components/layout/dashboard-shell.tsx)** (markup only).
+
+## Rules
+
+1. **Never** put viewport height, grid columns, or sidebar visibility in Tailwind classes on the shell — use `data-layout` + `terrana-dashboard-shell.css`.
+2. **Never** duplicate dashboard layout rules in `globals.css` — one file only.
+3. **Never** return a React fragment with multiple layout roots from sidebar components.
+4. Nav content only in `app-sidebar.tsx` — use `[data-layout="sidebar-inner"]` and `[data-layout="sidebar-nav-scroll"]`.
+5. Root [`layout.tsx`](src/app/layout.tsx) uses `data-terrana-app` on `<html>` — not Tailwind `h-svh` / `overflow-hidden`.
+6. Sidebar nav links use `data-nav-link` + [`terrana-sidebar-nav.css`](src/styles/terrana-sidebar-nav.css) — not Tailwind flex/padding on links.
+7. Main content scrolls in `<main data-layout="dashboard-page-scroll">` — not the document body.
+8. Critical layout properties use `!important` in shell/nav CSS so HMR / utility classes cannot override.
+
+## Verify after any layout change
+
+Run `npm run test:layout` (also in `npm run test:health`).
+
+Manual checks:
+
+- Super admin + accounts on desktop: dark sidebar full viewport height, sign out pinned bottom
+- Long list page: only white main area scrolls, sidebar stays fixed
+- Mobile: hamburger menu visible, no desktop sidebar strip

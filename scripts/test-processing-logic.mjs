@@ -71,6 +71,15 @@ assert(
   }) === 255,
 );
 
+assert(
+  "bags without kg per bag yields zero (invalid for pre-stock)",
+  calcProcessingOutputKg({
+    bags_produced: 10,
+    kg_per_bag: null,
+    extra_kg: 0,
+  }) === 0,
+);
+
 console.log("\nYield");
 assert(
   "yield percentage",
